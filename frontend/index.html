@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Northernlion Travel Guide</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.css" rel="stylesheet" />
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
@@ -88,7 +89,7 @@
     </div>
   </aside>
 
-  <!-- Google Map -->
+  <!-- Mapbox Map -->
   <div id="map"></div>
 
   <!-- Business Info Panel -->
@@ -106,9 +107,7 @@
 
 </div>
 
-<!-- Google Maps JS API — key injected by map.js after fetching /api/config -->
-<div id="google-maps-placeholder"></div>
-
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.9.4/mapbox-gl.js"></script>
 <script src="/js/map.js"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 /* =========================================================
-   Northernlion Travel Guide — Map JS
+   Northernlion Travel Guide — Map JS (Mapbox GL)
    ========================================================= */
 
 const API = "";  // same-origin
@@ -7,8 +7,8 @@ const API = "";  // same-origin
 // State
 let map = null;
 let allPins = [];
-let markers = [];
-let openInfoWindow = null;
+let currentMarkers = [];
+let currentPopup = null;
 let activeFilters = {
   city: "",
   category: "",
@@ -26,29 +26,19 @@ const SENTIMENT_COLORS = {
 };
 
 // ──────────────────────────────────────────────────────────
-// Bootstrap: fetch config → load Google Maps → fetch data
+// Bootstrap: fetch config → init Mapbox → fetch data
 // ──────────────────────────────────────────────────────────
 
 async function bootstrap() {
   try {
     const config = await fetch(`${API}/api/config`).then(r => r.json());
-    await loadGoogleMaps(config.google_maps_api_key);
+    mapboxgl.accessToken = config.mapbox_access_token;
     await Promise.all([loadCities(), loadMapData()]);
   } catch (err) {
     console.error("Bootstrap error:", err);
     document.getElementById("loading").innerHTML =
       `<p style="color:#f44336">Failed to load map. Is the server running?</p>`;
   }
-}
-
-function loadGoogleMaps(apiKey) {
-  return new Promise((resolve, reject) => {
-    window.__gmapsReady = resolve;
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=__gmapsReady&loading=async`;
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
 }
 
 // ──────────────────────────────────────────────────────────
@@ -85,50 +75,69 @@ function renderMap(pins) {
   // Filter closed if needed
   const visible = activeFilters.showClosed ? pins : pins.filter(p => !p.is_closed);
 
-  // Init map on first render (centered on first city or Vancouver default)
+  // Init map on first render
   if (!map) {
     const center = visible.length > 0
-      ? { lat: visible[0].lat, lng: visible[0].lng }
-      : { lat: 49.2827, lng: -123.1207 };  // Vancouver default
+      ? [visible[0].lng, visible[0].lat]   // Mapbox uses [lng, lat]
+      : [-123.1207, 49.2827];              // Vancouver default
 
-    map = new google.maps.Map(document.getElementById("map"), {
+    map = new mapboxgl.Map({
+      container: "map",
+      style: "mapbox://styles/mapbox/dark-v11",
       center,
-      zoom: 13,
-      mapTypeId: "roadmap",
-      styles: darkMapStyle(),
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
+      zoom: 12,
     });
+
+    map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+
+    // Wait for map to load before adding markers
+    map.on("load", () => addMarkers(visible));
+    return;
   }
 
+  addMarkers(visible);
+}
+
+function addMarkers(visible) {
   // Clear existing markers
-  markers.forEach(m => m.setMap(null));
-  markers = [];
-  if (openInfoWindow) {
-    openInfoWindow.close();
-    openInfoWindow = null;
+  currentMarkers.forEach(m => m.remove());
+  currentMarkers = [];
+  if (currentPopup) {
+    currentPopup.remove();
+    currentPopup = null;
   }
 
   // Add markers
   visible.forEach(pin => {
     const color = SENTIMENT_COLORS[pin.sentiment_summary] || SENTIMENT_COLORS.null;
-    const marker = new google.maps.Marker({
-      position: { lat: pin.lat, lng: pin.lng },
-      map,
-      title: pin.name,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        fillColor: color,
-        fillOpacity: pin.is_closed ? 0.4 : 0.9,
-        strokeColor: "#ffffff",
-        strokeWeight: 1.5,
-        scale: 9,
-      },
+
+    // Create custom marker element
+    const el = document.createElement("div");
+    el.className = "map-marker";
+    el.style.cssText = `
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: ${color};
+      border: 2px solid #fff;
+      cursor: pointer;
+      opacity: ${pin.is_closed ? 0.4 : 0.9};
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      transition: transform 0.15s;
+    `;
+    el.addEventListener("mouseenter", () => { el.style.transform = "scale(1.3)"; });
+    el.addEventListener("mouseleave", () => { el.style.transform = "scale(1)"; });
+
+    const marker = new mapboxgl.Marker({ element: el })
+      .setLngLat([pin.lng, pin.lat])
+      .addTo(map);
+
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openBusinessPanel(pin.id);
     });
 
-    marker.addListener("click", () => openBusinessPanel(pin.id));
-    markers.push(marker);
+    currentMarkers.push(marker);
   });
 
   // Update stats
@@ -149,7 +158,7 @@ async function openBusinessPanel(businessId) {
   const meta = document.getElementById("panel-meta");
 
   // Show loading state
-  document.getElementById("panel-name").textContent = "Loading…";
+  document.getElementById("panel-name").textContent = "Loading\u2026";
   body.innerHTML = "";
   meta.innerHTML = "";
   panel.classList.add("open");
@@ -270,7 +279,7 @@ function makeBadge(text, className) {
 }
 
 function sentimentEmoji(s) {
-  return { positive: "👍", negative: "👎", neutral: "😐", mixed: "🤔" }[s] || "";
+  return { positive: "\uD83D\uDC4D", negative: "\uD83D\uDC4E", neutral: "\uD83D\uDE10", mixed: "\uD83E\uDD14" }[s] || "";
 }
 
 function capitalise(s) {
@@ -286,33 +295,6 @@ function formatTime(secs) {
   const m = Math.floor(secs / 60);
   const s = secs % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-// ──────────────────────────────────────────────────────────
-// Dark map style
-// ──────────────────────────────────────────────────────────
-
-function darkMapStyle() {
-  return [
-    { elementType: "geometry", stylers: [{ color: "#1a1a2e" }] },
-    { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a2e" }] },
-    { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
-    { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-    { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] },
-    { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
-    { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
-    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
-    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
-    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
-    { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
-    { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
-    { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] },
-    { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-    { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
-    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
-    { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] },
-  ];
 }
 
 // ── Start ──────────────────────────────────────────────────

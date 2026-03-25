@@ -4,7 +4,7 @@ An interactive map at [eggeats.com](https://eggeats.com) that displays local bus
 
 ## Features
 
-- **Interactive Google Maps** with sentiment-coloured pins (green=positive, red=negative)
+- **Interactive Mapbox map** (dark theme) with sentiment-coloured pins (green=positive, red=negative)
 - **Filter** by city, category, and NL's vibe
 - **Business detail panel** with direct quotes and YouTube timestamp links
 - **LLM pipeline** that extracts mentions from video transcripts, handles typos, geocodes businesses
@@ -15,10 +15,10 @@ An interactive map at [eggeats.com](https://eggeats.com) that displays local bus
 
 | Component | Technology |
 |---|---|
-| Backend | Python 3.12 + FastAPI |
+| Backend | Python 3.13 + FastAPI |
 | Database | PostgreSQL + SQLAlchemy + Alembic |
 | LLM | Claude API (claude-sonnet-4-6) |
-| Map | Google Maps JavaScript API |
+| Map | Mapbox GL JS (50k free loads/month) |
 | Geocoding | Google Places API |
 | YouTube | YouTube Data API v3 + youtube-transcript-api |
 | Admin Auth | Google OAuth 2.0 |
@@ -32,8 +32,8 @@ An interactive map at [eggeats.com](https://eggeats.com) that displays local bus
 - Google Cloud project with these APIs enabled:
   - YouTube Data API v3
   - Places API
-  - Maps JavaScript API
   - OAuth 2.0 (Web Client)
+- Mapbox account (free) — https://account.mapbox.com/
 - Anthropic API key
 
 ### Setup

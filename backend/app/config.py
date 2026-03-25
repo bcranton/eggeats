@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     # Google Places API (geocoding / business resolution)
     google_places_api_key: str
 
-    # Google Maps JS API key (sent to frontend)
-    google_maps_api_key: str
+    # Mapbox access token (sent to frontend for map rendering)
+    mapbox_access_token: str
 
     # Google OAuth
     google_client_id: str

@@ -218,7 +218,7 @@ def get_business(business_id: int, db: Session = Depends(get_db)):
 
 @router.get("/config")
 def get_frontend_config():
-    """Returns public config values needed by frontend (Maps API key)."""
+    """Returns public config values needed by frontend (Mapbox token)."""
     from app.config import get_settings
     settings = get_settings()
-    return {"google_maps_api_key": settings.google_maps_api_key}
+    return {"mapbox_access_token": settings.mapbox_access_token}
