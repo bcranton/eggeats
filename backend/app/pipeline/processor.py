@@ -296,5 +296,11 @@ def run_pipeline(
         else:
             summary["failed"] += 1
 
+    # Invalidate server-side cache so the map reflects new data immediately
+    if summary["processed"] > 0:
+        from app.cache import cache_clear
+        cache_clear()
+        logger.info("Server cache cleared after pipeline run")
+
     logger.info(f"Pipeline complete: {summary}")
     return summary

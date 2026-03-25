@@ -5,18 +5,17 @@ No authentication required.
 import json
 from typing import Optional
 
+import json as _json
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 
-# Map data changes only when the pipeline runs — cache for 5 minutes.
-# This reduces DB load and speeds up repeat page visits.
-# Does NOT affect Mapbox billing (that's based on mapboxgl.Map() calls in the
-# browser, which HTML caching in main.py handles separately).
+# Browser cache header: 5-minute TTL, matches server-side cache below.
 MAP_DATA_CACHE = "public, max-age=300, stale-while-revalidate=60"
 
 from app.database import get_db
 from app.models import Business, City, Mention, ReviewStatus, Video
+from app.cache import cache_get, cache_set
 
 router = APIRouter(prefix="/api", tags=["map"])
 
@@ -133,7 +132,12 @@ def _mention_to_summary(mention: Mention) -> MentionSummary:
 def get_cities(response: Response, db: Session = Depends(get_db)):
     """List all cities."""
     response.headers["Cache-Control"] = MAP_DATA_CACHE
-    return db.query(City).all()
+    cached = cache_get("cities")
+    if cached is not None:
+        return cached
+    result = db.query(City).all()
+    cache_set("cities", result)
+    return result
 
 
 @router.get("/map-data", response_model=list[BusinessMapPin])
@@ -149,6 +153,15 @@ def get_map_data(
     Filtered by city, category, and/or sentiment.
     Only includes businesses that have coordinates.
     """
+    response.headers["Cache-Control"] = MAP_DATA_CACHE
+
+    # Server-side cache: key includes filter params so each combination is cached
+    # independently. Different users with the same filters share one DB query.
+    cache_key = f"map-data:{city_id}:{category}:{sentiment}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     query = (
         db.query(Business)
         .filter(
@@ -166,16 +179,14 @@ def get_map_data(
 
     businesses = query.all()
 
-    # Filter by sentiment if needed (requires checking mentions)
     if sentiment:
         businesses = [
             b for b in businesses
             if _dominant_sentiment(b.mentions) == sentiment
         ]
 
-    pins = []
-    for b in businesses:
-        pins.append(BusinessMapPin(
+    pins = [
+        BusinessMapPin(
             id=b.id,
             name=b.name,
             category=b.category,
@@ -185,15 +196,24 @@ def get_map_data(
             sentiment_summary=_dominant_sentiment(b.mentions),
             mention_count=len(b.mentions),
             city_id=b.city_id,
-        ))
+        )
+        for b in businesses
+    ]
 
-    response.headers["Cache-Control"] = MAP_DATA_CACHE
+    cache_set(cache_key, pins)
     return pins
 
 
 @router.get("/businesses/{business_id}", response_model=BusinessDetail)
 def get_business(business_id: int, response: Response, db: Session = Depends(get_db)):
     """Full business detail including all mentions and quotes."""
+    response.headers["Cache-Control"] = MAP_DATA_CACHE
+
+    cache_key = f"business:{business_id}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     business = (
         db.query(Business)
         .filter(
@@ -211,8 +231,7 @@ def get_business(business_id: int, response: Response, db: Session = Depends(get
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Business not found")
 
-    response.headers["Cache-Control"] = MAP_DATA_CACHE
-    return BusinessDetail(
+    result = BusinessDetail(
         id=business.id,
         name=business.name,
         category=business.category,
@@ -224,6 +243,8 @@ def get_business(business_id: int, response: Response, db: Session = Depends(get
         city=CitySchema.model_validate(business.city),
         mentions=[_mention_to_summary(m) for m in business.mentions],
     )
+    cache_set(cache_key, result)
+    return result
 
 
 @router.get("/config")

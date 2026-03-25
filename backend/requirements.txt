@@ -22,3 +22,6 @@ httpx==0.28.1
 
 # Auth utilities
 itsdangerous==2.2.0
+
+# Server-side in-memory TTL cache
+cachetools==5.5.0
