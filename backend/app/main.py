@@ -2,10 +2,10 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from app.api import map as map_router
 from app.api import auth as auth_router
@@ -59,9 +59,34 @@ def health_check():
 
 # Serve frontend static files
 if STATIC_DIR.exists():
-    # Serve specific HTML files explicitly before catch-all static mount
+    # HTML pages: cache for 5 minutes in browsers.
+    # This is the key lever for Mapbox cost — a returning visitor whose browser
+    # has the page cached will NOT trigger a new mapboxgl.Map() init, so it
+    # doesn't count against the 50k free monthly map loads.
+    # JS/CSS assets get a longer cache (1 hour) since they're content-addressed.
+    HTML_CACHE = "public, max-age=300, stale-while-revalidate=60"   # 5 min
+    ASSET_CACHE = "public, max-age=3600, stale-while-revalidate=300" # 1 hour
+
     @app.get("/admin.html")
     def serve_admin():
-        return FileResponse(STATIC_DIR / "admin.html")
+        return FileResponse(
+            STATIC_DIR / "admin.html",
+            headers={"Cache-Control": HTML_CACHE},
+        )
+
+    @app.get("/")
+    def serve_index():
+        return FileResponse(
+            STATIC_DIR / "index.html",
+            headers={"Cache-Control": HTML_CACHE},
+        )
+
+    @app.middleware("http")
+    async def add_asset_cache_headers(request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith(("/js/", "/css/")):
+            response.headers["Cache-Control"] = ASSET_CACHE
+        return response
 
     app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="frontend")

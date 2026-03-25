@@ -5,9 +5,15 @@ No authentication required.
 import json
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
+
+# Map data changes only when the pipeline runs — cache for 5 minutes.
+# This reduces DB load and speeds up repeat page visits.
+# Does NOT affect Mapbox billing (that's based on mapboxgl.Map() calls in the
+# browser, which HTML caching in main.py handles separately).
+MAP_DATA_CACHE = "public, max-age=300, stale-while-revalidate=60"
 
 from app.database import get_db
 from app.models import Business, City, Mention, ReviewStatus, Video
@@ -124,13 +130,15 @@ def _mention_to_summary(mention: Mention) -> MentionSummary:
 # ---------------------------------------------------------------------------
 
 @router.get("/cities", response_model=list[CitySchema])
-def get_cities(db: Session = Depends(get_db)):
+def get_cities(response: Response, db: Session = Depends(get_db)):
     """List all cities."""
+    response.headers["Cache-Control"] = MAP_DATA_CACHE
     return db.query(City).all()
 
 
 @router.get("/map-data", response_model=list[BusinessMapPin])
 def get_map_data(
+    response: Response,
     city_id: Optional[int] = Query(None),
     category: Optional[str] = Query(None),
     sentiment: Optional[str] = Query(None),
@@ -179,11 +187,12 @@ def get_map_data(
             city_id=b.city_id,
         ))
 
+    response.headers["Cache-Control"] = MAP_DATA_CACHE
     return pins
 
 
 @router.get("/businesses/{business_id}", response_model=BusinessDetail)
-def get_business(business_id: int, db: Session = Depends(get_db)):
+def get_business(business_id: int, response: Response, db: Session = Depends(get_db)):
     """Full business detail including all mentions and quotes."""
     business = (
         db.query(Business)
@@ -202,6 +211,7 @@ def get_business(business_id: int, db: Session = Depends(get_db)):
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Business not found")
 
+    response.headers["Cache-Control"] = MAP_DATA_CACHE
     return BusinessDetail(
         id=business.id,
         name=business.name,
