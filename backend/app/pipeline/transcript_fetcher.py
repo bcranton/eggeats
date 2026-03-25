@@ -1,0 +1,147 @@
+"""
+Fetches YouTube video transcripts using youtube-transcript-api.
+Prefers manually-created transcripts; falls back to auto-generated.
+"""
+import json
+import logging
+import time
+from datetime import datetime, timezone
+
+from youtube_transcript_api import (
+    YouTubeTranscriptApi,
+    NoTranscriptFound,
+    TranscriptsDisabled,
+)
+from sqlalchemy.orm import Session
+
+from app.models import Video, ProcessingStatus
+
+logger = logging.getLogger(__name__)
+
+# Delay between API calls to avoid rate limiting
+REQUEST_DELAY_SECONDS = 0.5
+
+
+def fetch_transcript(video: Video, db: Session) -> list[dict] | None:
+    """
+    Fetches transcript for a single video and caches it in the DB.
+    Returns parsed transcript (list of {text, start, duration}) or None.
+    """
+    try:
+        # Try manual transcript first, then auto-generated English
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video.youtube_video_id)
+
+        transcript = None
+        try:
+            transcript = transcript_list.find_manually_created_transcript(["en", "en-US", "en-GB"])
+        except NoTranscriptFound:
+            try:
+                transcript = transcript_list.find_generated_transcript(["en", "en-US", "en-GB"])
+            except NoTranscriptFound:
+                # Try any available transcript
+                for t in transcript_list:
+                    transcript = t
+                    break
+
+        if transcript is None:
+            logger.warning(f"No transcript found for {video.youtube_video_id}")
+            return None
+
+        data = transcript.fetch()
+        # Convert FetchedTranscript to plain list of dicts
+        parsed = [{"text": item["text"], "start": item["start"], "duration": item["duration"]}
+                  for item in data]
+
+        video.transcript_raw = json.dumps(parsed)
+        video.transcript_fetched_at = datetime.now(timezone.utc)
+        db.commit()
+
+        time.sleep(REQUEST_DELAY_SECONDS)
+        return parsed
+
+    except TranscriptsDisabled:
+        logger.warning(f"Transcripts disabled for {video.youtube_video_id}")
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching transcript for {video.youtube_video_id}: {e}")
+        return None
+
+
+def get_cached_transcript(video: Video) -> list[dict] | None:
+    """Returns parsed transcript from DB cache, or None if not cached."""
+    if video.transcript_raw:
+        try:
+            return json.loads(video.transcript_raw)
+        except json.JSONDecodeError:
+            return None
+    return None
+
+
+def transcript_to_text_with_timestamps(transcript: list[dict]) -> str:
+    """
+    Converts transcript list to a string with timestamps embedded.
+    Format: [12.34s] Some text here
+    """
+    lines = []
+    for item in transcript:
+        start = item.get("start", 0)
+        text = item.get("text", "").replace("\n", " ").strip()
+        if text:
+            lines.append(f"[{start:.0f}s] {text}")
+    return "\n".join(lines)
+
+
+def find_keyword_windows(
+    transcript: list[dict],
+    keywords: list[str],
+    window_seconds: int = 180,
+) -> list[dict]:
+    """
+    Finds windows of transcript text around keyword mentions.
+    Returns deduplicated/merged windows as list of:
+      {start_time, end_time, text}
+    """
+    keyword_lower = [k.lower() for k in keywords]
+
+    # Find all timestamps where a keyword appears
+    hit_times = []
+    for item in transcript:
+        text_lower = item.get("text", "").lower()
+        if any(kw in text_lower for kw in keyword_lower):
+            hit_times.append(item["start"])
+
+    if not hit_times:
+        return []
+
+    # Build windows around each hit, then merge overlapping ones
+    windows = []
+    for t in hit_times:
+        window_start = max(0, t - window_seconds / 2)
+        window_end = t + window_seconds / 2
+        windows.append((window_start, window_end))
+
+    # Merge overlapping windows
+    windows.sort()
+    merged = [windows[0]]
+    for start, end in windows[1:]:
+        if start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+
+    # Extract text for each window
+    result = []
+    for window_start, window_end in merged:
+        window_items = [
+            item for item in transcript
+            if window_start <= item["start"] <= window_end
+        ]
+        if window_items:
+            text = transcript_to_text_with_timestamps(window_items)
+            result.append({
+                "start_time": window_start,
+                "end_time": window_end,
+                "text": text,
+            })
+
+    return result

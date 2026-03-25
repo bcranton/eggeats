@@ -1,0 +1,24 @@
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+
+# Database
+sqlalchemy==2.0.36
+alembic==1.14.0
+psycopg2-binary==2.9.10
+
+# Config
+pydantic-settings==2.7.0
+
+# LLM
+anthropic==0.40.0
+
+# YouTube
+google-api-python-client==2.155.0
+youtube-transcript-api==0.6.3
+
+# HTTP client (for Google APIs)
+httpx==0.28.1
+
+# Auth utilities
+itsdangerous==2.2.0

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — NL Travel Guide</title>
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+
+<header>
+  <div class="header-title">
+    <h1>🗺 NL Travel Guide — Admin</h1>
+  </div>
+  <div class="header-actions">
+    <span class="admin-email" id="admin-email"></span>
+    <a href="/" class="btn btn-secondary">← Map</a>
+    <button class="btn btn-secondary" id="btn-logout">Log out</button>
+  </div>
+</header>
+
+<!-- Login screen (shown if not authenticated) -->
+<div id="login-screen" style="display:none;">
+  <h2>Admin Login</h2>
+  <p>Sign in with your Google account to access the admin panel.</p>
+  <a href="/auth/google" class="btn btn-primary" style="margin-top:8px;">
+    Sign in with Google
+  </a>
+</div>
+
+<!-- Main content (hidden until authenticated) -->
+<div class="main-content" id="main-content" style="display:none;">
+
+  <!-- Stats -->
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card"><div class="num" id="st-total-videos">–</div><div class="label">Total Videos</div></div>
+    <div class="stat-card"><div class="num warning" id="st-pending-videos">–</div><div class="label">Pending</div></div>
+    <div class="stat-card"><div class="num" id="st-completed-videos">–</div><div class="label">Processed</div></div>
+    <div class="stat-card"><div class="num danger" id="st-failed-videos">–</div><div class="label">Failed</div></div>
+    <div class="stat-card"><div class="num" id="st-total-biz">–</div><div class="label">Businesses</div></div>
+    <div class="stat-card"><div class="num" id="st-approved-biz">–</div><div class="label">Approved</div></div>
+    <div class="stat-card"><div class="num danger" id="st-review-queue">–</div><div class="label">Needs Review</div></div>
+    <div class="stat-card"><div class="num" id="st-mentions">–</div><div class="label">Mentions</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="tab-review">Review Queue</button>
+    <button class="tab-btn" data-tab="tab-videos">Videos</button>
+    <button class="tab-btn" data-tab="tab-businesses">Businesses</button>
+  </div>
+
+  <!-- Tab: Review Queue -->
+  <div class="tab-panel active" id="tab-review">
+    <div class="section-header">
+      <h2>Flagged for Review</h2>
+      <div style="display:flex;gap:8px;">
+        <select id="review-status-filter" class="btn btn-secondary" style="cursor:pointer;">
+          <option value="pending">Pending</option>
+          <option value="resolved">Resolved</option>
+          <option value="dismissed">Dismissed</option>
+        </select>
+      </div>
+    </div>
+    <div id="review-list"><div class="empty-state"><span class="spinner"></span> Loading…</div></div>
+  </div>
+
+  <!-- Tab: Videos -->
+  <div class="tab-panel" id="tab-videos">
+    <div class="section-header">
+      <h2>Video Processing Status</h2>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" id="btn-run-pipeline">▶ Run Pipeline (new videos)</button>
+        <button class="btn btn-secondary" id="btn-refresh-videos">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="pipeline-status" style="display:none;padding:10px 0;font-size:13px;color:var(--color-text-muted);">
+      <span class="spinner"></span> Pipeline running…
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Video</th>
+            <th>Published</th>
+            <th>Status</th>
+            <th>Mentions</th>
+            <th>Error</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="videos-table-body">
+          <tr><td colspan="6" class="empty-state">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tab: Businesses -->
+  <div class="tab-panel" id="tab-businesses">
+    <div class="section-header">
+      <h2>All Businesses</h2>
+      <div style="display:flex;gap:8px;">
+        <select id="biz-status-filter" class="btn btn-secondary" style="cursor:pointer;">
+          <option value="">All</option>
+          <option value="pending_review">Needs Review</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>City</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th>Mentions</th>
+            <th>Closed?</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="biz-table-body">
+          <tr><td colspan="7" class="empty-state">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Edit business modal (simple inline) -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:50;align-items:center;justify-content:center;">
+  <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);padding:24px;width:480px;max-width:95vw;">
+    <h3 style="margin-bottom:16px;">Edit Business</h3>
+    <input type="hidden" id="edit-biz-id" />
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <label style="font-size:13px;color:var(--color-text-muted);">Name</label>
+      <input type="text" id="edit-biz-name" style="padding:8px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
+      <label style="font-size:13px;color:var(--color-text-muted);">Category</label>
+      <select id="edit-biz-category" style="padding:8px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;">
+        <option value="restaurant">Restaurant</option>
+        <option value="cafe">Cafe</option>
+        <option value="bar">Bar</option>
+        <option value="bakery">Bakery</option>
+        <option value="market">Market</option>
+        <option value="shop">Shop</option>
+        <option value="attraction">Attraction</option>
+        <option value="other">Other</option>
+      </select>
+      <label style="font-size:13px;color:var(--color-text-muted);">Review Status</label>
+      <select id="edit-biz-review-status" style="padding:8px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;">
+        <option value="approved">Approved</option>
+        <option value="pending_review">Needs Review</option>
+        <option value="rejected">Rejected</option>
+      </select>
+      <label style="font-size:13px;color:var(--color-text-muted);">Admin Notes</label>
+      <textarea id="edit-biz-notes" rows="3" style="padding:8px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;resize:vertical;"></textarea>
+      <label style="font-size:13px;color:var(--color-text-muted);">
+        <input type="checkbox" id="edit-biz-closed" /> Mark as permanently closed
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
+      <button class="btn btn-secondary" id="edit-cancel">Cancel</button>
+      <button class="btn btn-primary" id="edit-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/admin.js"></script>
+</body>
+</html>

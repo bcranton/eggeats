@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://eggeats:eggeats@db:5432/eggeats
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Mount frontend so changes are reflected without rebuild
+      - ./frontend:/frontend
+      - ./backend:/app
+    develop:
+      watch:
+        - action: sync
+          path: ./backend
+          target: /app
+        - action: rebuild
+          path: backend/requirements.txt
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: eggeats
+      POSTGRES_USER: eggeats
+      POSTGRES_PASSWORD: eggeats
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eggeats -d eggeats"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

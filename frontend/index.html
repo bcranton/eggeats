@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Northernlion Travel Guide</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p style="font-size:14px; color: var(--color-text-muted);">Loading map data…</p>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="header-title">
+    <h1>🗺 NL Travel Guide</h1>
+    <span class="subtitle" id="city-label">Vancouver</span>
+  </div>
+  <div class="header-actions">
+    <a href="/admin.html">Admin</a>
+  </div>
+</header>
+
+<!-- App body: sidebar + map + info panel -->
+<div class="app-body">
+
+  <!-- Filter Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <h3>Stats</h3>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="num" id="stat-places">–</div>
+          <div class="label">Places</div>
+        </div>
+        <div class="stat-box">
+          <div class="num" id="stat-mentions">–</div>
+          <div class="label">Mentions</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Filters</h3>
+
+      <div class="filter-group">
+        <label>City</label>
+        <select class="filter-select" id="filter-city">
+          <option value="">All Cities</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Category</label>
+        <select class="filter-select" id="filter-category">
+          <option value="">All Categories</option>
+          <option value="restaurant">Restaurant</option>
+          <option value="cafe">Cafe</option>
+          <option value="bar">Bar</option>
+          <option value="bakery">Bakery</option>
+          <option value="market">Market</option>
+          <option value="shop">Shop</option>
+          <option value="attraction">Attraction</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>NL's Vibe</label>
+        <div class="sentiment-buttons">
+          <button class="sentiment-btn" data-sentiment="positive">👍 Positive</button>
+          <button class="sentiment-btn" data-sentiment="negative">👎 Negative</button>
+          <button class="sentiment-btn" data-sentiment="neutral">😐 Neutral</button>
+          <button class="sentiment-btn" data-sentiment="mixed">🤔 Mixed</button>
+        </div>
+      </div>
+
+      <div class="filter-group" style="margin-top:12px;">
+        <label>
+          <input type="checkbox" id="filter-show-closed" />
+          Show closed businesses
+        </label>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Google Map -->
+  <div id="map"></div>
+
+  <!-- Business Info Panel -->
+  <aside class="info-panel" id="info-panel">
+    <div class="info-panel-header">
+      <div>
+        <div class="business-name" id="panel-name">–</div>
+      </div>
+      <button class="close-btn" id="panel-close" title="Close">✕</button>
+    </div>
+    <div class="info-panel-meta" id="panel-meta"></div>
+    <div class="info-panel-body" id="panel-body"></div>
+    <div class="info-panel-address" id="panel-address"></div>
+  </aside>
+
+</div>
+
+<!-- Google Maps JS API — key injected by map.js after fetching /api/config -->
+<div id="google-maps-placeholder"></div>
+
+<script src="/js/map.js"></script>
+</body>
+</html>
