@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     google_client_secret: str
     google_redirect_uri: str = "http://localhost:8000/auth/callback"
 
-    # Admin access control (comma-separated emails)
-    admin_emails: str = "you@gmail.com,another@gmail.com"
+    # Admin access control (comma-separated emails) — set via ADMIN_EMAILS env var
+    admin_emails: str
 
     # Session signing
     secret_key: str
