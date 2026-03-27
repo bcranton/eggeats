@@ -102,13 +102,15 @@
   <div class="tab-panel" id="tab-businesses">
     <div class="section-header">
       <h2>All Businesses</h2>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;align-items:center;">
         <select id="biz-status-filter" class="btn btn-secondary" style="cursor:pointer;">
           <option value="">All</option>
           <option value="pending_review">Needs Review</option>
           <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
         </select>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;white-space:nowrap;">
+          <input type="checkbox" id="biz-show-rejected"> Show rejected
+        </label>
       </div>
     </div>
 

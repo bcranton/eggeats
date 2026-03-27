@@ -385,7 +385,11 @@ async function loadBusinesses() {
 
 function renderBizRows() {
   const tbody = document.getElementById("biz-table-body");
-  const businesses = Array.from(bizDataMap.values());
+  const showRejected = document.getElementById("biz-show-rejected").checked;
+  let businesses = Array.from(bizDataMap.values());
+  if (!showRejected) {
+    businesses = businesses.filter(b => b.review_status !== "rejected");
+  }
 
   if (!businesses.length) {
     tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No businesses found.</td></tr>`;
@@ -441,6 +445,7 @@ async function quickApprove(bizId) {
 }
 
 document.getElementById("biz-status-filter").addEventListener("change", loadBusinesses);
+document.getElementById("biz-show-rejected").addEventListener("change", renderBizRows);
 
 // ──────────────────────────────────────────────────────────
 // Merge mode
