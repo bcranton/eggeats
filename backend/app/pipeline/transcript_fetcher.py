@@ -4,6 +4,7 @@ Prefers manually-created transcripts; falls back to auto-generated.
 """
 import json
 import logging
+import re
 import time
 from datetime import datetime, timezone
 
@@ -171,13 +172,18 @@ def find_keyword_windows(
     Returns deduplicated/merged windows as list of:
       {start_time, end_time, text}
     """
-    keyword_lower = [k.lower() for k in keywords]
+    # Compile word-boundary patterns so "la" doesn't match inside "large",
+    # "salami", "place" etc., and "van" doesn't match inside "advantage".
+    keyword_patterns = [
+        re.compile(r'\b' + re.escape(k.lower()) + r'\b')
+        for k in keywords
+    ]
 
     # Find all timestamps where a keyword appears
     hit_times = []
     for item in transcript:
         text_lower = item.get("text", "").lower()
-        if any(kw in text_lower for kw in keyword_lower):
+        if any(pat.search(text_lower) for pat in keyword_patterns):
             hit_times.append(item["start"])
 
     if not hit_times:

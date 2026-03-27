@@ -164,12 +164,31 @@ def _process_video_for_city(
         if not canonical_name:
             continue
 
-        geocode_result = geocode_business(
-            canonical_name=canonical_name,
-            city_name=city.name,
-            country=city.country,
-            llm_confidence=extraction.get("confidence", 0.5),
-        )
+        is_chain = extraction.get("is_chain", False)
+
+        if is_chain:
+            # Generic chain opinion — skip geocoding, store with no coordinates.
+            # These represent NL's general views on a chain, not a specific location.
+            geocode_result = {
+                "name": canonical_name,
+                "lat": None,
+                "lng": None,
+                "google_place_id": None,
+                "address": None,
+                "website": None,
+                "category": extraction.get("category"),
+                "is_closed": False,
+                "needs_review": False,
+                "geocode_confidence": 1.0,
+            }
+            logger.info(f"  [{city.name}] Chain mention (no geocode): {canonical_name}")
+        else:
+            geocode_result = geocode_business(
+                canonical_name=canonical_name,
+                city_name=city.name,
+                country=city.country,
+                llm_confidence=extraction.get("confidence", 0.5),
+            )
 
         if extraction.get("is_closed") and not geocode_result.get("is_closed"):
             geocode_result["is_closed"] = True

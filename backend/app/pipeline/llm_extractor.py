@@ -13,7 +13,7 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-EXTRACTION_PROMPT = """You are analyzing a YouTube video transcript from Northernlion (NL), a content creator based in Vancouver, BC, Canada who also travels to other cities. He frequently mentions local businesses, restaurants, cafes, bars, attractions, and other places.
+EXTRACTION_PROMPT = """You are analyzing a YouTube video transcript from Northernlion (NL), a content creator based in Vancouver, BC, Canada who also travels to other cities. He frequently reviews local businesses, restaurants, cafes, bars, attractions, and other places.
 
 Transcript segment with timestamps (format: [Ns] text):
 <transcript>
@@ -24,30 +24,34 @@ Video title: "{video_title}"
 Published: {published_date}
 City context: {city_name}, {country}
 
-Your task: Extract every mention of a local business, restaurant, cafe, bar, attraction, shop, or place in or near {city_name}. Focus on named businesses/places only (not generic mentions like "a restaurant" or "the mall").
+Your task: Extract businesses or places where NL has shared a genuine opinion, review, or personal experience. He must have actually said something meaningful about the place — not just mentioned it in passing or used it as a comparison.
 
-For each mention, return a JSON object with these fields:
+For each qualifying mention, return a JSON object with these fields:
 - "raw_name": the name exactly as spoken/written in the transcript (may have typos/errors)
 - "canonical_name": your best guess at the correct business name (fix typos, use full proper name)
 - "category": one of "restaurant", "cafe", "bar", "shop", "attraction", "bakery", "market", "other"
 - "sentiment": one of "positive", "negative", "neutral", "mixed"
 - "sentiment_score": float from -1.0 (very negative) to 1.0 (very positive)
-- "quotes": array of verbatim transcript quotes (1-3 sentences max each) that express an opinion about this place
+- "quotes": array of verbatim transcript quotes (1-3 sentences max each) that express NL's opinion about this place
 - "timestamp_seconds": approximate timestamp in seconds from the video start (use the [Ns] markers)
 - "confidence": float 0.0-1.0 — how confident you are that "canonical_name" is correct
 - "is_closed": true if the transcript implies the business is/was closed or no longer exists, false otherwise, null if unknown
+- "is_chain": true if this is a national/international chain (Subway, McDonald's, Planet Fitness, Tim Hortons, etc.) AND NL is expressing a general opinion about the chain rather than reviewing a specific location he visited. False for all other cases including local chains or when NL specifically visited a particular location of a chain.
 - "needs_review": true if confidence < 0.7 OR you are uncertain about the name OR multiple businesses could match
 - "notes": brief note about any uncertainty (empty string if none)
 
 Rules:
+- ONLY include a business if NL has genuinely reviewed or shared a personal experience with it. Exclude:
+  * Passing comparisons ("it was bigger than a Subway sandwich")
+  * Generic mentions with no opinion ("I walked past a Tim Hortons")
+  * Businesses NL mentions only to contrast with another place he's reviewing
 - Include closed/defunct businesses (NL's opinion is still historically valuable)
 - Transcript auto-captions often have errors — use context to determine the real business name
 - Common Vancouver/Metro Vancouver businesses: La Glace (candy shop), Tacofino, Burdock & Co, Odd Society Spirits, etc. Burnaby and surrounding suburbs (Richmond, Surrey, North Vancouver, etc.) are part of the Metro Vancouver area.
-- Only include places NL actually talks about with some specificity — not passing one-word mentions with no context
-- If a business is mentioned multiple times in the segment, only include it once (use the richest context)
+- If a business is mentioned multiple times in the segment, include it once (use the richest context)
 - Do NOT invent sentiment — if NL doesn't express an opinion, use "neutral"
 
-Return ONLY a valid JSON array. Return [] if no businesses are mentioned. No markdown, no explanation."""
+Return ONLY a valid JSON array. Return [] if no qualifying businesses are mentioned. No markdown, no explanation."""
 
 
 def extract_businesses_from_segment(
