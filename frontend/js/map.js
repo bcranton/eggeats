@@ -107,7 +107,7 @@ function renderNoLocationPanel(businesses) {
     ].filter(Boolean).join("");
 
     const mentionsHtml = (biz.mentions || []).map(mention => {
-      const quotesHtml = (mention.quotes || []).slice(0, 2)
+      const quotesHtml = (mention.quotes || [])
         .map(q => `<div class="quote">"${escapeHtml(q)}"</div>`)
         .join("");
       const timeLabel = mention.timestamp_seconds ? ` (${formatTime(mention.timestamp_seconds)})` : "";
@@ -250,7 +250,7 @@ function renderListView() {
     ].filter(Boolean).join("");
 
     const mentionsHtml = (biz.mentions || []).map(mention => {
-      const quotesHtml = (mention.quotes || []).slice(0, 2)
+      const quotesHtml = (mention.quotes || [])
         .map(q => `<div class="quote">"${escapeHtml(q)}"</div>`)
         .join("");
       const timeLabel = mention.timestamp_seconds ? ` (${formatTime(mention.timestamp_seconds)})` : "";
@@ -413,7 +413,6 @@ async function openBusinessPanel(businessId) {
 
         // Quotes
         const quotesHtml = (mention.quotes || [])
-          .slice(0, 3)
           .map(q => `<div class="quote">"${escapeHtml(q)}"</div>`)
           .join("");
 
