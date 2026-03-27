@@ -3,31 +3,31 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    # Database
+    # Database — required, no default
     database_url: str
 
-    # LLM
-    anthropic_api_key: str
+    # LLM — required for pipeline, optional at startup
+    anthropic_api_key: str = ""
 
-    # YouTube Data API v3
-    youtube_api_key: str
+    # YouTube Data API v3 — required for pipeline, optional at startup
+    youtube_api_key: str = ""
 
     # Google Places API (geocoding / business resolution)
-    google_places_api_key: str
+    google_places_api_key: str = ""
 
     # Mapbox access token (sent to frontend for map rendering)
-    mapbox_access_token: str
+    mapbox_access_token: str = ""
 
     # Google OAuth
-    google_client_id: str
-    google_client_secret: str
+    google_client_id: str = ""
+    google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/auth/callback"
 
     # Admin access control (comma-separated emails) — set via ADMIN_EMAILS env var
-    admin_emails: str
+    admin_emails: str = ""
 
     # Session signing
-    secret_key: str
+    secret_key: str = ""
 
     # App
     environment: str = "development"
