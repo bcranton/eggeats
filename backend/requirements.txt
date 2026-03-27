@@ -1,20 +1,20 @@
 # Web framework
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
+fastapi==0.135.2
+uvicorn[standard]==0.42.0
 
 # Database
-sqlalchemy==2.0.36
-alembic==1.14.0
-psycopg2-binary==2.9.10
+sqlalchemy==2.0.48
+alembic==1.18.4
+psycopg2-binary==2.9.11
 
 # Config
-pydantic-settings==2.7.0
+pydantic-settings==2.13.1
 
 # LLM
-anthropic==0.40.0
+anthropic==0.86.0
 
 # YouTube
-google-api-python-client==2.155.0
+google-api-python-client==2.193.0
 youtube-transcript-api==1.2.4
 
 # HTTP client (for Google APIs)
@@ -24,4 +24,4 @@ httpx==0.28.1
 itsdangerous==2.2.0
 
 # Server-side in-memory TTL cache
-cachetools==5.5.0
+cachetools==7.0.5
