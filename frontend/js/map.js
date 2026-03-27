@@ -53,9 +53,18 @@ async function loadCities() {
   cities.forEach(city => {
     const opt = document.createElement("option");
     opt.value = city.id;
-    opt.textContent = `${city.name}, ${city.country}`;
+    opt.textContent = city.business_count > 0
+      ? `${city.name} (${city.business_count})`
+      : city.name;
     select.appendChild(opt);
   });
+
+  // Select the first (most-reviewed) city by default
+  if (cities.length > 0) {
+    const first = cities[0];
+    select.value = first.id;
+    activeFilters.city = String(first.id);
+  }
 }
 
 async function loadMapData() {
@@ -79,15 +88,18 @@ function renderMap(pins) {
 
   // Init map on first render
   if (!map) {
-    const center = visible.length > 0
-      ? [visible[0].lng, visible[0].lat]   // Mapbox uses [lng, lat]
-      : [-123.1207, 49.2827];              // Vancouver default
+    const defaultCity = citiesById[activeFilters.city];
+    const center = defaultCity
+      ? [defaultCity.center_lng, defaultCity.center_lat]
+      : visible.length > 0
+        ? [visible[0].lng, visible[0].lat]
+        : [-123.1207, 49.2827];  // fallback
 
     map = new mapboxgl.Map({
       container: "map",
       style: "mapbox://styles/mapbox/dark-v11",
       center,
-      zoom: 12,
+      zoom: defaultCity ? defaultCity.default_zoom : 12,
     });
 
     map.addControl(new mapboxgl.NavigationControl(), "bottom-right");

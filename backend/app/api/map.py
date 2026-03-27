@@ -13,6 +13,8 @@ from pydantic import BaseModel
 # Browser cache header: 5-minute TTL, matches server-side cache below.
 MAP_DATA_CACHE = "public, max-age=300, stale-while-revalidate=60"
 
+from sqlalchemy import func as sa_func
+
 from app.database import get_db
 from app.models import Business, City, Mention, ReviewStatus, Video
 from app.cache import cache_get, cache_set
@@ -31,6 +33,7 @@ class CitySchema(BaseModel):
     center_lat: float
     center_lng: float
     default_zoom: int
+    business_count: int = 0
 
     class Config:
         from_attributes = True
@@ -130,12 +133,29 @@ def _mention_to_summary(mention: Mention) -> MentionSummary:
 
 @router.get("/cities", response_model=list[CitySchema])
 def get_cities(response: Response, db: Session = Depends(get_db)):
-    """List all cities."""
+    """List all cities ordered by number of approved businesses."""
     response.headers["Cache-Control"] = MAP_DATA_CACHE
     cached = cache_get("cities")
     if cached is not None:
         return cached
-    result = db.query(City).all()
+
+    # Count approved businesses per city
+    counts = dict(
+        db.query(Business.city_id, sa_func.count(Business.id))
+        .filter(Business.review_status == ReviewStatus.approved)
+        .group_by(Business.city_id)
+        .all()
+    )
+
+    cities = db.query(City).all()
+    result = []
+    for city in cities:
+        schema = CitySchema.model_validate(city)
+        schema.business_count = counts.get(city.id, 0)
+        result.append(schema)
+
+    result.sort(key=lambda c: c.business_count, reverse=True)
+
     cache_set("cities", result)
     return result
 
