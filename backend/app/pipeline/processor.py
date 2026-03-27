@@ -223,6 +223,15 @@ def process_video(db: Session, video: Video, cities: list[City]) -> bool:
     Returns True on success, False on failure.
     """
     logger.info(f"Processing video: {video.youtube_video_id} - {video.title}")
+
+    # Private/deleted videos — skip without wasting API calls
+    if video.title == "Private video":
+        logger.info(f"Skipping private video: {video.youtube_video_id}")
+        video.processing_status = ProcessingStatus.skipped
+        video.error_message = None
+        db.commit()
+        return True
+
     video.processing_status = ProcessingStatus.processing
     db.commit()
 

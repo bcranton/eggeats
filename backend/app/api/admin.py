@@ -351,7 +351,9 @@ def get_videos(
     _: AdminSession = Depends(get_admin_session),
 ):
     """Lists videos with processing status."""
-    query = db.query(Video).options(joinedload(Video.mentions))
+    query = db.query(Video).options(joinedload(Video.mentions)).filter(
+        Video.title != "Private video"
+    )
 
     if status:
         try:

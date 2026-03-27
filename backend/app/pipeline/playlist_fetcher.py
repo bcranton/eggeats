@@ -59,6 +59,12 @@ def fetch_playlist_videos(db: Session, playlist: Playlist) -> list[str]:
             continue
 
         title = snippet.get("title", "Unknown Title")
+
+        # Private/deleted videos surface as "Private video" in playlist data — skip them
+        if title == "Private video":
+            logger.info(f"Skipping private video: {video_id}")
+            continue
+
         published_str = snippet.get("publishedAt") or content_details.get("videoPublishedAt")
         published_at = None
         if published_str:
