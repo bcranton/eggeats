@@ -1,61 +1,83 @@
 """
-Fetches YouTube video transcripts using youtube-transcript-api.
-Prefers manually-created transcripts; falls back to auto-generated.
+Fetches YouTube video transcripts via youtubetranscripts.org API.
+Returns real timestamped segments — no estimation needed.
+Docs: https://youtubetranscripts.org/api#endpoints
 """
 import json
 import logging
 import time
 from datetime import datetime, timezone
 
-from youtube_transcript_api import (
-    YouTubeTranscriptApi,
-    NoTranscriptFound,
-    TranscriptsDisabled,
-)
+import httpx
 from sqlalchemy.orm import Session
 
 from app.models import Video, ProcessingStatus
 
 logger = logging.getLogger(__name__)
 
-# Delay between successful API calls to avoid rate limiting
+TRANSCRIPT_API_URL = "https://youtubetranscripts.org/api/transcript"
+
+# Conservative delay between requests (free tier is rate-limited)
 REQUEST_DELAY_SECONDS = 2.0
 
 # Retry settings for 429 / transient errors
 MAX_RETRIES = 4
-RETRY_BASE_DELAY_SECONDS = 30  # first retry after 30s, then 60s, 120s, 240s
+RETRY_BASE_DELAY_SECONDS = 30  # 30s, 60s, 120s, 240s
 
 
-def _fetch_transcript_with_retry(video_id: str):
+def _fetch_transcript_with_retry(video_id: str) -> list[dict] | None:
     """
     Fetches transcript with exponential backoff on 429 / transient errors.
-    Returns transcript or raises on non-retryable error.
+    Returns a list of {text, start, duration} dicts, or None if unavailable.
     """
+    from app.config import get_settings
+    api_key = get_settings().youtubetranscripts_api_key
+    if not api_key:
+        raise RuntimeError("YOUTUBETRANSCRIPTS_API_KEY is not configured")
+
     last_exc = None
     for attempt in range(MAX_RETRIES + 1):
         try:
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            response = httpx.get(
+                TRANSCRIPT_API_URL,
+                params={"video_url": video_id, "include_timestamp": "true"},
+                headers={"X-API-Key": api_key},
+                timeout=30,
+            )
 
-            transcript = None
-            try:
-                transcript = transcript_list.find_manually_created_transcript(["en", "en-US", "en-GB"])
-            except NoTranscriptFound:
-                try:
-                    transcript = transcript_list.find_generated_transcript(["en", "en-US", "en-GB"])
-                except NoTranscriptFound:
-                    # Try any available transcript
-                    for t in transcript_list:
-                        transcript = t
-                        break
+            if response.status_code == 404:
+                logger.warning(f"No transcript available for {video_id} (404)")
+                return None
 
-            return transcript
+            if response.status_code == 429 or response.status_code >= 500:
+                raise httpx.HTTPStatusError(
+                    f"HTTP {response.status_code}",
+                    request=response.request,
+                    response=response,
+                )
 
-        except (NoTranscriptFound, TranscriptsDisabled):
-            raise  # Genuinely no transcript — don't retry
+            response.raise_for_status()
+            data = response.json()
+
+            segments = data.get("transcript", [])
+            if not segments:
+                logger.warning(f"Empty transcript returned for {video_id}")
+                return None
+
+            return [
+                {
+                    "text": item["text"],
+                    "start": float(item["start"]),
+                    "duration": float(item["duration"]),
+                }
+                for item in segments
+                if item.get("text")
+            ]
+
         except Exception as e:
             last_exc = e
             err_str = str(e)
-            is_rate_limit = "429" in err_str or "Too Many Requests" in err_str or "sorry" in err_str.lower()
+            is_rate_limit = "429" in err_str or "Too Many Requests" in err_str
 
             if attempt < MAX_RETRIES and is_rate_limit:
                 delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
@@ -77,16 +99,10 @@ def fetch_transcript(video: Video, db: Session) -> list[dict] | None:
     Returns parsed transcript (list of {text, start, duration}) or None.
     """
     try:
-        transcript = _fetch_transcript_with_retry(video.youtube_video_id)
+        parsed = _fetch_transcript_with_retry(video.youtube_video_id)
 
-        if transcript is None:
-            logger.warning(f"No transcript found for {video.youtube_video_id}")
+        if parsed is None:
             return None
-
-        data = transcript.fetch()
-        # Convert FetchedTranscript to plain list of dicts
-        parsed = [{"text": item["text"], "start": item["start"], "duration": item["duration"]}
-                  for item in data]
 
         video.transcript_raw = json.dumps(parsed)
         video.transcript_fetched_at = datetime.now(timezone.utc)
@@ -95,9 +111,6 @@ def fetch_transcript(video: Video, db: Session) -> list[dict] | None:
         time.sleep(REQUEST_DELAY_SECONDS)
         return parsed
 
-    except TranscriptsDisabled:
-        logger.warning(f"Transcripts disabled for {video.youtube_video_id}")
-        return None
     except Exception as e:
         logger.error(f"Error fetching transcript for {video.youtube_video_id}: {e}")
         return None

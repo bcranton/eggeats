@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     # Session signing
     secret_key: str = ""
 
+    # YouTube transcript API (youtubetranscripts.org)
+    youtubetranscripts_api_key: str = ""
+
     # App
     environment: str = "development"
     log_level: str = "INFO"
