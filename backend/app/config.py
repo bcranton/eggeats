@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     # Claude model for transcript extraction (update to newer models as released)
     anthropic_model: str = "claude-sonnet-4-6"
 
+    # YouTube transcript fetching (avoids datacenter IP blocks on Railway)
+    # https://supadata.ai — 100 free transcripts/month
+    supadata_api_key: str = ""
+
     # YouTube Data API v3 — required for pipeline, optional at startup
     youtube_api_key: str = ""
 

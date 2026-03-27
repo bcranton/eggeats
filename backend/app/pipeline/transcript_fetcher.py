@@ -1,6 +1,9 @@
 """
-Fetches YouTube video transcripts using youtube-transcript-api.
-Prefers manually-created transcripts; falls back to auto-generated.
+Fetches YouTube video transcripts.
+
+Primary:  Supadata API (https://supadata.ai) — avoids IP blocking on Railway
+          and other datacenter hosts. Set SUPADATA_API_KEY in env to use.
+Fallback: youtube-transcript-api — works on local/residential IPs.
 """
 import json
 import logging
@@ -8,92 +11,85 @@ import re
 import time
 from datetime import datetime, timezone
 
-from youtube_transcript_api import (
-    YouTubeTranscriptApi,
-    IpBlocked,
-    NoTranscriptFound,
-    TranscriptsDisabled,
-)
+import httpx
 from sqlalchemy.orm import Session
 
 from app.models import Video, ProcessingStatus
 
 logger = logging.getLogger(__name__)
 
-# Delay between successful API calls to avoid rate limiting
-REQUEST_DELAY_SECONDS = 2.0
+# Delay between successful fetches to be polite
+REQUEST_DELAY_SECONDS = 1.0
 
-# Retry settings for 429 / transient errors
-MAX_RETRIES = 4
-RETRY_BASE_DELAY_SECONDS = 30  # first retry after 30s, then 60s, 120s, 240s
-
-# Single instance — the new API requires instantiation (not class-method calls)
-_api = YouTubeTranscriptApi()
+# Retry settings
+MAX_RETRIES = 3
+RETRY_BASE_DELAY_SECONDS = 5
 
 
-def _pick_best_transcript(transcript_list):
+# ---------------------------------------------------------------------------
+# Supadata fetcher
+# ---------------------------------------------------------------------------
+
+SUPADATA_URL = "https://api.supadata.ai/v1/youtube/transcript"
+
+
+def _fetch_via_supadata(video_id: str, api_key: str) -> list[dict] | None:
     """
-    Given a TranscriptList from api.list(), returns the best available
-    transcript in order of preference:
-      1. Manually-created English
-      2. Auto-generated English
-      3. Any transcript
-    Returns None if the list is empty.
-    """
-    manual_en = None
-    generated_en = None
-    fallback = None
-
-    for t in transcript_list:
-        lang = t.language_code.lower()
-        if not t.is_generated and lang.startswith("en"):
-            manual_en = t
-            break  # best possible — stop early
-        if t.is_generated and lang.startswith("en") and generated_en is None:
-            generated_en = t
-        if fallback is None:
-            fallback = t
-
-    return manual_en or generated_en or fallback
-
-
-def _fetch_transcript_with_retry(video_id: str):
-    """
-    Fetches transcript with exponential backoff on 429 / transient errors.
-    Returns a Transcript object or raises on non-retryable error.
+    Fetch transcript via Supadata API.
+    Returns list of {text, start, duration} dicts (start/duration in seconds),
+    or None if no transcript is available.
+    Raises httpx.HTTPStatusError on unrecoverable API errors.
     """
     last_exc = None
     for attempt in range(MAX_RETRIES + 1):
         try:
-            transcript_list = _api.list(video_id)
-            return _pick_best_transcript(transcript_list)
+            response = httpx.get(
+                SUPADATA_URL,
+                params={"videoId": video_id},
+                headers={"x-api-key": api_key},
+                timeout=30,
+            )
+            response.raise_for_status()
+            data = response.json()
 
-        except (NoTranscriptFound, TranscriptsDisabled):
-            raise  # Genuinely no transcript — don't retry
-        except IpBlocked as e:
+            content = data.get("content")
+            if not content:
+                logger.warning(f"Supadata returned no content for {video_id}")
+                return None
+
+            # Supadata returns offset/duration in milliseconds — convert to seconds
+            return [
+                {
+                    "text": seg["text"],
+                    "start": seg["offset"] / 1000.0,
+                    "duration": seg["duration"] / 1000.0,
+                }
+                for seg in content
+                if seg.get("text", "").strip()
+            ]
+
+        except httpx.HTTPStatusError as e:
+            status = e.response.status_code
+            if status == 404:
+                # No transcript available for this video
+                logger.warning(f"Supadata: no transcript for {video_id} (404)")
+                return None
+            if status == 402:
+                logger.error("Supadata: quota exhausted (402). Add credits or wait for monthly reset.")
+                raise
+            if status in (429, 503) and attempt < MAX_RETRIES:
+                delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
+                logger.warning(f"Supadata rate-limited for {video_id} (attempt {attempt+1}). Retrying in {delay}s…")
+                last_exc = e
+                time.sleep(delay)
+                continue
+            raise
+
+        except httpx.TimeoutException as e:
             last_exc = e
             if attempt < MAX_RETRIES:
                 delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
-                logger.warning(
-                    f"IP blocked fetching transcript for {video_id} "
-                    f"(attempt {attempt + 1}/{MAX_RETRIES + 1}). "
-                    f"Retrying in {delay}s…"
-                )
-                time.sleep(delay)
-            else:
-                raise
-        except Exception as e:
-            last_exc = e
-            err_str = str(e)
-            is_rate_limit = "429" in err_str or "Too Many Requests" in err_str or "sorry" in err_str.lower()
-
-            if attempt < MAX_RETRIES and is_rate_limit:
-                delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
-                logger.warning(
-                    f"Rate limited fetching transcript for {video_id} "
-                    f"(attempt {attempt + 1}/{MAX_RETRIES + 1}). "
-                    f"Retrying in {delay}s…"
-                )
+                logger.warning(f"Supadata timeout for {video_id} (attempt {attempt+1}). Retrying in {delay}s…")
                 time.sleep(delay)
             else:
                 raise
@@ -101,41 +97,100 @@ def _fetch_transcript_with_retry(video_id: str):
     raise last_exc
 
 
+# ---------------------------------------------------------------------------
+# youtube-transcript-api fallback (local / residential IPs only)
+# ---------------------------------------------------------------------------
+
+def _fetch_via_yta(video_id: str) -> list[dict] | None:
+    """
+    Fetch transcript using youtube-transcript-api.
+    Works on residential IPs; frequently blocked on datacenter IPs.
+    """
+    from youtube_transcript_api import (
+        YouTubeTranscriptApi,
+        IpBlocked,
+        NoTranscriptFound,
+        TranscriptsDisabled,
+    )
+
+    api = YouTubeTranscriptApi()
+
+    try:
+        transcript_list = api.list(video_id)
+    except (NoTranscriptFound, TranscriptsDisabled):
+        logger.warning(f"youtube-transcript-api: no transcript for {video_id}")
+        return None
+    except IpBlocked:
+        logger.warning(
+            f"youtube-transcript-api: IP blocked for {video_id}. "
+            "Set SUPADATA_API_KEY to avoid this on Railway."
+        )
+        return None
+
+    # Prefer manual EN → auto EN → any
+    best = None
+    generated_en = None
+    fallback = None
+    for t in transcript_list:
+        lang = t.language_code.lower()
+        if not t.is_generated and lang.startswith("en"):
+            best = t
+            break
+        if t.is_generated and lang.startswith("en") and generated_en is None:
+            generated_en = t
+        if fallback is None:
+            fallback = t
+
+    transcript = best or generated_en or fallback
+    if transcript is None:
+        return None
+
+    data = transcript.fetch()
+    return [
+        {"text": s.text, "start": s.start, "duration": s.duration}
+        for s in data
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Public interface
+# ---------------------------------------------------------------------------
+
 def fetch_transcript(video: Video, db: Session) -> list[dict] | None:
     """
     Fetches transcript for a single video and caches it in the DB.
+    Uses Supadata if SUPADATA_API_KEY is set, otherwise falls back to
+    youtube-transcript-api (suitable for local/residential IPs).
     Returns parsed transcript (list of {text, start, duration}) or None.
     """
+    from app.config import get_settings
+    settings = get_settings()
+
+    video_id = video.youtube_video_id
+    parsed = None
+
     try:
-        transcript = _fetch_transcript_with_retry(video.youtube_video_id)
+        if settings.supadata_api_key:
+            logger.info(f"Fetching transcript via Supadata for {video_id}")
+            parsed = _fetch_via_supadata(video_id, settings.supadata_api_key)
+        else:
+            logger.info(f"Fetching transcript via youtube-transcript-api for {video_id} (no SUPADATA_API_KEY set)")
+            parsed = _fetch_via_yta(video_id)
 
-        if transcript is None:
-            logger.warning(f"No transcript found for {video.youtube_video_id}")
-            return None
-
-        data = transcript.fetch()
-        # Segments are objects with attribute access in youtube-transcript-api 0.6.x
-        parsed = [
-            {"text": s.text, "start": s.start, "duration": s.duration}
-            for s in data
-        ]
-
-        video.transcript_raw = json.dumps(parsed)
-        video.transcript_fetched_at = datetime.now(timezone.utc)
-        db.commit()
-
-        time.sleep(REQUEST_DELAY_SECONDS)
-        return parsed
-
-    except IpBlocked:
-        logger.warning(f"IP blocked fetching transcript for {video.youtube_video_id} — retry later")
-        return None
-    except TranscriptsDisabled:
-        logger.warning(f"Transcripts disabled for {video.youtube_video_id}")
-        return None
     except Exception as e:
-        logger.error(f"Error fetching transcript for {video.youtube_video_id}: {e}")
+        logger.error(f"Error fetching transcript for {video_id}: {e}")
         return None
+
+    if parsed is None:
+        logger.warning(f"No transcript available for {video_id}")
+        return None
+
+    video.transcript_raw = json.dumps(parsed)
+    video.transcript_fetched_at = datetime.now(timezone.utc)
+    db.commit()
+
+    time.sleep(REQUEST_DELAY_SECONDS)
+    return parsed
 
 
 def get_cached_transcript(video: Video) -> list[dict] | None:
@@ -151,7 +206,7 @@ def get_cached_transcript(video: Video) -> list[dict] | None:
 def transcript_to_text_with_timestamps(transcript: list[dict]) -> str:
     """
     Converts transcript list to a string with timestamps embedded.
-    Format: [12.34s] Some text here
+    Format: [12s] Some text here
     """
     lines = []
     for item in transcript:
@@ -169,17 +224,15 @@ def find_keyword_windows(
 ) -> list[dict]:
     """
     Finds windows of transcript text around keyword mentions.
-    Returns deduplicated/merged windows as list of:
-      {start_time, end_time, text}
+    Returns deduplicated/merged windows as list of {start_time, end_time, text}.
     """
-    # Compile word-boundary patterns so "la" doesn't match inside "large",
-    # "salami", "place" etc., and "van" doesn't match inside "advantage".
+    # Word-boundary patterns prevent substring false matches
+    # e.g. "van" won't match inside "advantage", "la" won't match "place"
     keyword_patterns = [
         re.compile(r'\b' + re.escape(k.lower()) + r'\b')
         for k in keywords
     ]
 
-    # Find all timestamps where a keyword appears
     hit_times = []
     for item in transcript:
         text_lower = item.get("text", "").lower()
@@ -190,13 +243,7 @@ def find_keyword_windows(
         return []
 
     # Build windows around each hit, then merge overlapping ones
-    windows = []
-    for t in hit_times:
-        window_start = max(0, t - window_seconds / 2)
-        window_end = t + window_seconds / 2
-        windows.append((window_start, window_end))
-
-    # Merge overlapping windows
+    windows = [(max(0, t - window_seconds / 2), t + window_seconds / 2) for t in hit_times]
     windows.sort()
     merged = [windows[0]]
     for start, end in windows[1:]:
@@ -205,7 +252,6 @@ def find_keyword_windows(
         else:
             merged.append((start, end))
 
-    # Extract text for each window
     result = []
     for window_start, window_end in merged:
         window_items = [
@@ -213,11 +259,10 @@ def find_keyword_windows(
             if window_start <= item["start"] <= window_end
         ]
         if window_items:
-            text = transcript_to_text_with_timestamps(window_items)
             result.append({
                 "start_time": window_start,
                 "end_time": window_end,
-                "text": text,
+                "text": transcript_to_text_with_timestamps(window_items),
             })
 
     return result
