@@ -33,6 +33,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding-bottom: 40px;
 }
 
 /* ── Site Header (centered title) ────────────────────── */
