@@ -1,4 +1,4 @@
-"""Move Vancouver default map center slightly south
+"""Revert Vancouver default map center to original
 
 Revision ID: 0004
 Revises: 0003
@@ -18,7 +18,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.execute("""
         UPDATE cities
-        SET center_lat = 49.22
+        SET center_lat = 49.2827
         WHERE name = 'Vancouver' AND country = 'CA'
     """)
 
