@@ -205,20 +205,29 @@ def get_map_data(
             if _dominant_sentiment(b.mentions) == sentiment
         ]
 
-    pins = [
-        BusinessMapPin(
+    pins = []
+    for b in businesses:
+        sentiment = _dominant_sentiment(b.mentions)
+        mention_count = len(b.mentions)
+        base = dict(
             id=b.id,
             name=b.name,
             category=b.category,
-            lat=b.lat,
-            lng=b.lng,
             is_closed=b.is_closed,
-            sentiment_summary=_dominant_sentiment(b.mentions),
-            mention_count=len(b.mentions),
+            sentiment_summary=sentiment,
+            mention_count=mention_count,
             city_id=b.city_id,
         )
-        for b in businesses
-    ]
+        # Primary pin
+        pins.append(BusinessMapPin(lat=b.lat, lng=b.lng, **base))
+        # Extra location pins
+        if b.extra_addresses_json:
+            try:
+                for loc in _json.loads(b.extra_addresses_json):
+                    if loc.get("lat") and loc.get("lng"):
+                        pins.append(BusinessMapPin(lat=loc["lat"], lng=loc["lng"], **base))
+            except (ValueError, TypeError):
+                pass
 
     cache_set(cache_key, pins)
     return pins
@@ -256,7 +265,9 @@ def get_business(business_id: int, response: Response, db: Session = Depends(get
         addresses.append(business.address)
     if business.extra_addresses_json:
         try:
-            addresses.extend(_json.loads(business.extra_addresses_json))
+            for loc in _json.loads(business.extra_addresses_json):
+                if isinstance(loc, dict) and loc.get("address"):
+                    addresses.append(loc["address"])
         except (ValueError, TypeError):
             pass
 

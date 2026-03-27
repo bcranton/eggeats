@@ -200,6 +200,34 @@ def geocode_business(
     return result
 
 
+def geocode_address(address_str: str) -> dict[str, Any]:
+    """
+    Geocodes a raw address string (e.g. manually entered by admin).
+    Returns {"address": str, "lat": float|None, "lng": float|None}.
+    Uses Places Text Search with the full address as the query.
+    """
+    place = search_place(address_str, "", "")
+    if not place:
+        return {"address": address_str, "lat": None, "lng": None}
+
+    location = place.get("location", {})
+    formatted = place.get("formattedAddress") or address_str
+
+    # Try to get more accurate coords from Details
+    place_id = place.get("id")
+    if place_id:
+        details = get_place_details(place_id)
+        if details:
+            location = details.get("location", location)
+            formatted = details.get("formattedAddress", formatted)
+
+    return {
+        "address": formatted,
+        "lat": location.get("latitude"),
+        "lng": location.get("longitude"),
+    }
+
+
 def _map_types_to_category(types: list[str]) -> str:
     """Maps Google Places types to our simplified categories."""
     type_map = {

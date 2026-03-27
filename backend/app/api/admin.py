@@ -506,10 +506,10 @@ def get_businesses(
             for r in m.review_items
             if r.status == ReviewQueueStatus.pending
         )
-        extra = []
+        extra_addresses = []
         if b.extra_addresses_json:
             try:
-                extra = json.loads(b.extra_addresses_json)
+                extra_addresses = [e["address"] for e in json.loads(b.extra_addresses_json) if e.get("address")]
             except (ValueError, TypeError):
                 pass
         result.append(BusinessAdmin(
@@ -519,7 +519,7 @@ def get_businesses(
             lat=b.lat,
             lng=b.lng,
             address=b.address,
-            extra_addresses=extra,
+            extra_addresses=extra_addresses,
             website=b.website,
             is_closed=b.is_closed,
             review_status=b.review_status.value,
@@ -555,7 +555,30 @@ def update_business(
     if request.address is not None:
         business.address = request.address
     if request.extra_addresses is not None:
-        business.extra_addresses_json = json.dumps(request.extra_addresses) if request.extra_addresses else None
+        if not request.extra_addresses:
+            business.extra_addresses_json = None
+        else:
+            from app.pipeline.geocoder import geocode_address
+            # Load existing geocoded entries so we don't re-geocode unchanged addresses
+            existing: dict[str, dict] = {}
+            if business.extra_addresses_json:
+                try:
+                    for entry in json.loads(business.extra_addresses_json):
+                        existing[entry["address"]] = entry
+                except (ValueError, TypeError):
+                    pass
+
+            geocoded = []
+            for addr in request.extra_addresses:
+                addr = addr.strip()
+                if not addr:
+                    continue
+                if addr in existing:
+                    geocoded.append(existing[addr])
+                else:
+                    geocoded.append(geocode_address(addr))
+
+            business.extra_addresses_json = json.dumps(geocoded) if geocoded else None
     if request.website is not None:
         business.website = request.website
     if request.is_closed is not None:
@@ -570,6 +593,9 @@ def update_business(
 
     business.updated_at = datetime.now(timezone.utc)
     db.commit()
+
+    from app.cache import cache_clear
+    cache_clear()
     return {"message": "Business updated"}
 
 
