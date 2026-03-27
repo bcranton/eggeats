@@ -652,6 +652,43 @@ def get_business_mentions(
     return result
 
 
+@router.delete("/mentions/{mention_id}")
+def delete_mention(
+    mention_id: int,
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """
+    Deletes a single mention and its review queue items.
+    If the parent business has no remaining mentions after deletion, it is also deleted.
+    """
+    from app.cache import cache_clear
+
+    mention = db.query(Mention).filter(Mention.id == mention_id).first()
+    if not mention:
+        raise HTTPException(status_code=404, detail="Mention not found")
+
+    business_id = mention.business_id
+
+    # Delete associated review queue items first
+    db.query(ReviewQueue).filter(ReviewQueue.mention_id == mention_id).delete(synchronize_session=False)
+
+    db.delete(mention)
+    db.flush()
+
+    # Delete the business if it now has no mentions
+    remaining = db.query(Mention).filter(Mention.business_id == business_id).count()
+    business_deleted = False
+    if remaining == 0:
+        db.query(Business).filter(Business.id == business_id).delete()
+        business_deleted = True
+
+    db.commit()
+    cache_clear()
+
+    return {"message": "Mention deleted", "business_deleted": business_deleted}
+
+
 @router.put("/mentions/{mention_id}")
 def update_mention(
     mention_id: int,

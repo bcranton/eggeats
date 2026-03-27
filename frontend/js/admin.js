@@ -507,9 +507,12 @@ function renderMentions(mentions) {
       <div class="quotes-container" id="quotes-${m.id}" style="display:flex;flex-direction:column;gap:6px;">
         ${quotesHtml}
       </div>
-      <div style="display:flex;gap:6px;justify-content:flex-end;">
-        <button class="btn btn-secondary btn-sm" onclick="addQuote(${m.id})">+ Add quote</button>
-        <button class="btn btn-primary btn-sm" onclick="saveMention(${m.id})">Save</button>
+      <div style="display:flex;gap:6px;justify-content:space-between;align-items:center;">
+        <button class="btn btn-danger btn-sm" onclick="deleteMention(${m.id}, this)">✕ Delete mention</button>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-secondary btn-sm" onclick="addQuote(${m.id})">+ Add quote</button>
+          <button class="btn btn-primary btn-sm" onclick="saveMention(${m.id})">Save</button>
+        </div>
       </div>
     `;
     list.appendChild(row);
@@ -564,6 +567,27 @@ async function saveMention(mentionId) {
     loadBusinesses();
   } catch (e) {
     toast(`Failed: ${e.message}`, "error");
+  }
+}
+
+async function deleteMention(mentionId, btn) {
+  if (!confirm("Delete this mention and its quotes? If it's the only mention for this business, the business will also be deleted.")) return;
+  btn.disabled = true;
+  try {
+    const result = await apiFetch(`/api/admin/mentions/${mentionId}`, { method: "DELETE" });
+    // Remove the mention row from the modal
+    btn.closest("div[style]").remove();
+    if (result.business_deleted) {
+      toast("Mention deleted — business had no remaining mentions and was also deleted", "success");
+      document.getElementById("edit-modal").style.display = "none";
+    } else {
+      toast("Mention deleted", "success");
+    }
+    loadBusinesses();
+    loadStats();
+  } catch (e) {
+    toast(`Failed: ${e.message}`, "error");
+    btn.disabled = false;
   }
 }
 
