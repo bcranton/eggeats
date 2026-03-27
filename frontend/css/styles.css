@@ -33,7 +33,6 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding-bottom: 40px;
 }
 
 /* ── Site Header (centered title) ────────────────────── */
@@ -416,6 +415,14 @@ select.filter-select:focus {
 .info-panel-address a {
   color: var(--color-accent);
   text-decoration: none;
+}
+
+/* ── Bottom bar ──────────────────────────────────────── */
+.bottom-bar {
+  height: 40px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
 /* ── Loading overlay ─────────────────────────────────── */
