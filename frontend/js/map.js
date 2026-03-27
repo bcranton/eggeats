@@ -129,21 +129,28 @@ function addMarkers(visible) {
     const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
     const markerSize = isTouchDevice ? 24 : 18;
 
+    // Outer el is the Mapbox anchor — Mapbox sets transform:translate on it for positioning.
+    // We must NOT modify el's transform or it jumps off-screen.
+    // Instead, scale an inner circle element on hover.
     const el = document.createElement("div");
     el.className = "map-marker";
-    el.style.cssText = `
-      width: ${markerSize}px;
-      height: ${markerSize}px;
+    el.style.cssText = `width: ${markerSize}px; height: ${markerSize}px; cursor: pointer;`;
+
+    const circle = document.createElement("div");
+    circle.style.cssText = `
+      width: 100%;
+      height: 100%;
       border-radius: 50%;
       background: ${color};
       border: 2px solid #fff;
-      cursor: pointer;
       opacity: ${pin.is_closed ? 0.4 : 0.9};
       box-shadow: 0 2px 6px rgba(0,0,0,0.4);
       transition: transform 0.15s;
     `;
-    el.addEventListener("mouseenter", () => { el.style.transform = "scale(1.3)"; });
-    el.addEventListener("mouseleave", () => { el.style.transform = "scale(1)"; });
+    el.appendChild(circle);
+
+    el.addEventListener("mouseenter", () => { circle.style.transform = "scale(1.3)"; });
+    el.addEventListener("mouseleave", () => { circle.style.transform = "scale(1)"; });
 
     const marker = new mapboxgl.Marker({ element: el })
       .setLngLat([pin.lng, pin.lat])
