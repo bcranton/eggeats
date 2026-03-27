@@ -1,8 +1,9 @@
 """
 Fetches YouTube video transcripts.
 
-Primary:  Supadata API (https://supadata.ai) — avoids IP blocking on Railway
+Primary:  Supadata SDK (https://supadata.ai) — avoids IP blocking on Railway
           and other datacenter hosts. Set SUPADATA_API_KEY in env to use.
+          Uses mode="native" so only actual captions are returned (no AI generation).
 Fallback: youtube-transcript-api — works on local/residential IPs.
 """
 import json
@@ -11,90 +12,50 @@ import re
 import time
 from datetime import datetime, timezone
 
-import httpx
 from sqlalchemy.orm import Session
 
-from app.models import Video, ProcessingStatus
+from app.models import Video
 
 logger = logging.getLogger(__name__)
 
 # Delay between successful fetches to be polite
 REQUEST_DELAY_SECONDS = 1.0
 
-# Retry settings
-MAX_RETRIES = 3
-RETRY_BASE_DELAY_SECONDS = 5
-
 
 # ---------------------------------------------------------------------------
 # Supadata fetcher
 # ---------------------------------------------------------------------------
 
-SUPADATA_URL = "https://api.supadata.ai/v1/youtube/transcript"
-
-
 def _fetch_via_supadata(video_id: str, api_key: str) -> list[dict] | None:
     """
-    Fetch transcript via Supadata API.
+    Fetch transcript via Supadata SDK using native mode (captions only, no AI).
     Returns list of {text, start, duration} dicts (start/duration in seconds),
     or None if no transcript is available.
-    Raises httpx.HTTPStatusError on unrecoverable API errors.
     """
-    last_exc = None
-    for attempt in range(MAX_RETRIES + 1):
-        try:
-            response = httpx.get(
-                SUPADATA_URL,
-                params={"videoId": video_id},
-                headers={"x-api-key": api_key},
-                timeout=30,
-            )
-            response.raise_for_status()
-            data = response.json()
+    from supadata import Supadata, SupadataError
 
-            content = data.get("content")
-            if not content:
-                logger.warning(f"Supadata returned no content for {video_id}")
-                return None
+    client = Supadata(api_key=api_key)
+    try:
+        result = client.youtube.transcript(video_id=video_id, lang="en")
+    except SupadataError as e:
+        logger.warning(f"Supadata: no transcript for {video_id}: {e}")
+        return None
 
-            # Supadata returns offset/duration in milliseconds — convert to seconds
-            return [
-                {
-                    "text": seg["text"],
-                    "start": seg["offset"] / 1000.0,
-                    "duration": seg["duration"] / 1000.0,
-                }
-                for seg in content
-                if seg.get("text", "").strip()
-            ]
+    content = getattr(result, "content", None) or []
+    if not content:
+        logger.warning(f"Supadata returned empty content for {video_id}")
+        return None
 
-        except httpx.HTTPStatusError as e:
-            status = e.response.status_code
-            if status == 404:
-                # No transcript available for this video
-                logger.warning(f"Supadata: no transcript for {video_id} (404)")
-                return None
-            if status == 402:
-                logger.error("Supadata: quota exhausted (402). Add credits or wait for monthly reset.")
-                raise
-            if status in (429, 503) and attempt < MAX_RETRIES:
-                delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
-                logger.warning(f"Supadata rate-limited for {video_id} (attempt {attempt+1}). Retrying in {delay}s…")
-                last_exc = e
-                time.sleep(delay)
-                continue
-            raise
-
-        except httpx.TimeoutException as e:
-            last_exc = e
-            if attempt < MAX_RETRIES:
-                delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
-                logger.warning(f"Supadata timeout for {video_id} (attempt {attempt+1}). Retrying in {delay}s…")
-                time.sleep(delay)
-            else:
-                raise
-
-    raise last_exc
+    # Supadata returns offset/duration in milliseconds — convert to seconds
+    return [
+        {
+            "text": seg.text,
+            "start": seg.offset / 1000.0,
+            "duration": seg.duration / 1000.0,
+        }
+        for seg in content
+        if getattr(seg, "text", "").strip()
+    ]
 
 
 # ---------------------------------------------------------------------------

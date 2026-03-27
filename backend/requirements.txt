@@ -16,6 +16,7 @@ anthropic==0.86.0
 # YouTube
 google-api-python-client==2.193.0
 youtube-transcript-api==1.2.4
+supadata==1.6.0
 
 # HTTP client (for Google APIs)
 httpx==0.28.1
