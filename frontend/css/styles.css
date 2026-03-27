@@ -465,25 +465,208 @@ select.filter-select:focus {
   to { transform: rotate(360deg); }
 }
 
+/* ── Mobile filter drawer elements (hidden on desktop) ── */
+.mobile-filter-btn {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.mobile-filter-btn:hover {
+  background: var(--color-border);
+  border-color: var(--color-text-muted);
+}
+
+.filter-panel-drag-handle {
+  display: none;
+  width: 36px;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 2px;
+  margin: 0 auto;
+  flex-shrink: 0;
+}
+
+.filter-panel-close {
+  display: none;
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.filter-panel-close:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 190;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.mobile-overlay.visible {
+  opacity: 1;
+}
+
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 768px) {
-  .filter-panel,
+  /* Compact header */
+  .site-header {
+    padding: 12px 16px 10px;
+  }
+
+  .site-header h1 {
+    font-size: 26px;
+  }
+
+  .site-header .subtitle {
+    display: none;
+  }
+
+  /* City bar: row with city select + filter button */
+  .city-bar {
+    gap: 10px;
+    padding: 8px 12px;
+    justify-content: space-between;
+  }
+
+  .city-select {
+    flex: 1;
+    min-width: 0;
+    font-size: 15px;
+    padding: 8px 32px 8px 12px;
+  }
+
+  .mobile-filter-btn {
+    display: flex;
+  }
+
+  /* Hide right stats panel; filter panel becomes a drawer */
   .stats-panel {
     display: none;
   }
 
+  /* Map: full width, no horizontal padding */
+  .map-wrapper {
+    padding: 0;
+    width: 100%;
+  }
+
+  /* Filter panel → fixed bottom drawer */
+  .filter-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 75vh;
+    z-index: 200;
+    border-radius: 14px 14px 0 0;
+    border-top: 1px solid var(--color-border);
+    border-left: none;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.6);
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    overflow-y: auto;
+    padding-top: 20px;
+    gap: 20px;
+  }
+
+  .filter-panel.open {
+    transform: translateY(0);
+  }
+
+  .filter-panel-drag-handle {
+    display: block;
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .filter-panel-close {
+    display: block;
+  }
+
+  /* Overlay behind drawer */
+  .mobile-overlay {
+    display: block;
+    pointer-events: none;
+  }
+
+  .mobile-overlay.active {
+    pointer-events: all;
+  }
+
+  /* Bottom bar hidden on mobile (save space) */
+  .bottom-bar {
+    display: none;
+  }
+
+  /* Info panel → full-width bottom sheet */
   .info-panel {
     width: 100%;
     top: auto;
     bottom: 0;
-    height: 60vh;
+    height: 72vh;
     border-left: none;
     border-top: 1px solid var(--color-border);
-    border-radius: var(--radius) var(--radius) 0 0;
+    border-radius: 14px 14px 0 0;
     transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
   }
 
   .info-panel.open {
     transform: translateY(0);
+  }
+
+  /* Larger touch targets for markers (applied via JS) */
+  .map-marker-touch {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  /* Slightly larger text in panel on mobile */
+  .info-panel-header .business-name {
+    font-size: 18px;
+  }
+
+  .mention-card .video-title {
+    font-size: 14px;
+  }
+
+  .mention-card .quote {
+    font-size: 14px;
+  }
+
+  /* Navigation controls: move to top-right on mobile to avoid bottom sheet overlap */
+  .mapboxgl-ctrl-bottom-right {
+    bottom: 80px !important;
   }
 }

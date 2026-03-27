@@ -126,11 +126,14 @@ function addMarkers(visible) {
     const color = SENTIMENT_COLORS[pin.sentiment_summary] || SENTIMENT_COLORS.null;
 
     // Create custom marker element
+    const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
+    const markerSize = isTouchDevice ? 24 : 18;
+
     const el = document.createElement("div");
     el.className = "map-marker";
     el.style.cssText = `
-      width: 18px;
-      height: 18px;
+      width: ${markerSize}px;
+      height: ${markerSize}px;
       border-radius: 50%;
       background: ${color};
       border: 2px solid #fff;
@@ -268,6 +271,7 @@ document.getElementById("filter-city").addEventListener("change", e => {
 document.getElementById("filter-category").addEventListener("change", e => {
   activeFilters.category = e.target.value;
   loadMapData();
+  if (window.matchMedia("(max-width: 768px)").matches) closeFilterDrawer();
 });
 
 document.querySelectorAll(".sentiment-btn").forEach(btn => {
@@ -282,6 +286,7 @@ document.querySelectorAll(".sentiment-btn").forEach(btn => {
       btn.classList.add("active");
     }
     loadMapData();
+    if (window.matchMedia("(max-width: 768px)").matches) closeFilterDrawer();
   });
 });
 
@@ -291,6 +296,32 @@ document.getElementById("filter-show-closed").addEventListener("change", e => {
 });
 
 document.getElementById("panel-close").addEventListener("click", closePanel);
+
+// ──────────────────────────────────────────────────────────
+// Mobile filter drawer
+// ──────────────────────────────────────────────────────────
+
+const filterPanel  = document.getElementById("filter-panel");
+const mobileOverlay = document.getElementById("mobile-overlay");
+
+function openFilterDrawer() {
+  filterPanel.classList.add("open");
+  mobileOverlay.classList.add("active");
+  // Trigger reflow then fade in overlay
+  requestAnimationFrame(() => mobileOverlay.classList.add("visible"));
+}
+
+function closeFilterDrawer() {
+  filterPanel.classList.remove("open");
+  mobileOverlay.classList.remove("visible");
+  mobileOverlay.addEventListener("transitionend", () => {
+    mobileOverlay.classList.remove("active");
+  }, { once: true });
+}
+
+document.getElementById("mobile-filter-btn").addEventListener("click", openFilterDrawer);
+document.getElementById("filter-panel-close").addEventListener("click", closeFilterDrawer);
+mobileOverlay.addEventListener("click", closeFilterDrawer);
 
 // ──────────────────────────────────────────────────────────
 // Utilities

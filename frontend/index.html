@@ -28,13 +28,21 @@
 <!-- City selector: full-width row so it aligns with the centered title -->
 <div class="city-bar">
   <select class="city-select" id="filter-city"></select>
+  <button class="mobile-filter-btn" id="mobile-filter-btn" aria-label="Open filters">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    Filters
+  </button>
 </div>
 
 <!-- Main layout: filters | map | stats -->
 <div class="app-wrapper">
 
   <!-- Left: Filters + Stats -->
-  <aside class="filter-panel">
+  <aside class="filter-panel" id="filter-panel">
+    <div class="filter-panel-drag-handle"></div>
+    <button class="filter-panel-close" id="filter-panel-close" aria-label="Close filters">✕</button>
     <div class="stats-inline">
       <span class="num" id="stat-places">–</span> <span class="label">Places</span>
       <span class="stat-sep">·</span>
@@ -96,6 +104,9 @@
   <div class="info-panel-body" id="panel-body"></div>
   <div class="info-panel-address" id="panel-address"></div>
 </aside>
+
+<!-- Mobile overlay (dims map behind filter drawer) -->
+<div class="mobile-overlay" id="mobile-overlay"></div>
 
 <div class="bottom-bar"></div>
 
