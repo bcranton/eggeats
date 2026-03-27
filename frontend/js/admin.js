@@ -76,14 +76,28 @@ async function loadStats() {
 // ──────────────────────────────────────────────────────────
 
 function setupTabs() {
-  document.querySelectorAll(".tab-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-      document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  const activateTab = (tabId) => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+    const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+    const panel = document.getElementById(tabId);
+    if (btn && panel) {
       btn.classList.add("active");
-      document.getElementById(btn.dataset.tab).classList.add("active");
-    });
+      panel.classList.add("active");
+      window.location.hash = tabId;
+    }
+  };
+
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => activateTab(btn.dataset.tab));
   });
+
+  // Restore tab from URL hash on load
+  const hash = window.location.hash.slice(1);
+  const validTabs = Array.from(document.querySelectorAll(".tab-btn")).map(b => b.dataset.tab);
+  if (hash && validTabs.includes(hash)) {
+    activateTab(hash);
+  }
 }
 
 // ──────────────────────────────────────────────────────────
@@ -207,7 +221,7 @@ async function loadVideos() {
         <td>${v.mention_count}</td>
         <td>${errorHtml}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-secondary btn-sm" onclick="reprocessVideo(${v.id})">↻ Reprocess</button>
+          <button class="btn btn-secondary btn-sm" onclick="reprocessVideo(${v.id}, this)">↻ Reprocess</button>
           ${v.mention_count > 0 ? `<button class="btn btn-danger btn-sm" onclick="clearExtractions(${v.id}, this)">✕ Clear</button>` : ""}
         </td>
       `;
@@ -219,13 +233,27 @@ async function loadVideos() {
   }
 }
 
-async function reprocessVideo(videoId) {
+async function reprocessVideo(videoId, btn) {
+  btn.disabled = true;
+  btn.textContent = "↻ Queuing…";
   try {
     await apiFetch(`/api/admin/videos/${videoId}/reprocess`, { method: "POST" });
+    // Update the status chip in-place — no full table reload
+    const row = btn.closest("tr");
+    const chipCell = row.querySelector(".chip");
+    if (chipCell) {
+      chipCell.className = "chip chip-pending";
+      chipCell.textContent = "pending";
+    }
+    // Clear error cell if present
+    const cells = row.querySelectorAll("td");
+    if (cells[4]) cells[4].innerHTML = "–";
+    btn.textContent = "↻ Queued";
     toast("Video queued for reprocessing", "success");
-    loadVideos();
   } catch (e) {
     toast(`Failed: ${e.message}`, "error");
+    btn.disabled = false;
+    btn.textContent = "↻ Reprocess";
   }
 }
 
