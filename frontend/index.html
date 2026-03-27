@@ -86,13 +86,13 @@
       </div>
       <div id="list-view-body" class="list-view-body"></div>
     </div>
-    <!-- Unlocated businesses in the current city (no coordinates) -->
-    <div id="unlocated-strip" class="unlocated-section" style="display:none;">
-      <div class="unlocated-section-header">
-        <span id="unlocated-strip-heading" class="panel-heading"></span>
-        <span id="unlocated-strip-count" style="font-size:12px;color:var(--color-text-muted);"></span>
-      </div>
-      <div id="unlocated-strip-body" class="unlocated-section-body"></div>
+    <!-- Unlocated businesses drawer (city businesses with no coordinates) -->
+    <div id="unlocated-drawer" class="unlocated-drawer" style="display:none;">
+      <button class="unlocated-drawer-handle" id="unlocated-drawer-handle" aria-expanded="false">
+        <span class="unlocated-drawer-pill"></span>
+        <span id="unlocated-drawer-label">↑ Places without a location</span>
+      </button>
+      <div class="unlocated-drawer-body" id="unlocated-drawer-body"></div>
     </div>
   </div>
 

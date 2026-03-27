@@ -57,8 +57,8 @@ async function loadNoLocationData() {
 }
 
 function renderUnlocatedStrip() {
-  const strip = document.getElementById("unlocated-strip");
-  const body  = document.getElementById("unlocated-strip-body");
+  const drawer = document.getElementById("unlocated-drawer");
+  const body   = document.getElementById("unlocated-drawer-body");
 
   let items = noLocationData;
   if (!activeFilters.showClosed) items = items.filter(b => !b.is_closed);
@@ -72,19 +72,37 @@ function renderUnlocatedStrip() {
   }
 
   if (!items.length) {
-    strip.style.display = "none";
+    drawer.style.display = "none";
     return;
   }
 
-  // Update heading with city name
+  // Update handle label
   const city = citiesById[activeFilters.city];
   const cityLabel = city ? city.name : "This City";
-  document.getElementById("unlocated-strip-heading").textContent =
-    `${cityLabel} — No Fixed Location`;
-  document.getElementById("unlocated-strip-count").textContent =
-    `${items.length} place${items.length !== 1 ? "s" : ""}`;
+  const count = items.length;
+  document.getElementById("unlocated-drawer-label").textContent =
+    `↑ ${count} place${count !== 1 ? "s" : ""} without a location in ${cityLabel}`;
 
-  strip.style.display = "flex";
+  drawer.style.display = "flex";
+
+  // Wire up toggle once (idempotent via flag)
+  const handle = document.getElementById("unlocated-drawer-handle");
+  if (!handle._drawerBound) {
+    handle._drawerBound = true;
+    handle.addEventListener("click", () => {
+      const isOpen = drawer.classList.toggle("open");
+      handle.setAttribute("aria-expanded", String(isOpen));
+      // Flip arrow direction
+      const label = document.getElementById("unlocated-drawer-label");
+      label.textContent = label.textContent.replace(/^[↑↓]/, isOpen ? "↓" : "↑");
+    });
+  }
+
+  // Reset to closed state when re-rendered (city changed)
+  drawer.classList.remove("open");
+  handle.setAttribute("aria-expanded", "false");
+  const label = document.getElementById("unlocated-drawer-label");
+  label.textContent = label.textContent.replace(/^[↑↓]/, "↑");
 
   body.innerHTML = "";
   items.forEach(biz => {
@@ -202,7 +220,7 @@ function showListView() {
   document.getElementById("map").style.display = "none";
   document.getElementById("list-view").style.display = "flex";
   document.getElementById("no-location-stat").style.display = "none";
-  document.getElementById("unlocated-strip").style.display = "none";
+  document.getElementById("unlocated-drawer").style.display = "none";
 }
 
 function showMapView() {
