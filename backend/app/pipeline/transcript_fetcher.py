@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 from youtube_transcript_api import (
     YouTubeTranscriptApi,
+    IpBlocked,
     NoTranscriptFound,
     TranscriptsDisabled,
 )
@@ -68,6 +69,18 @@ def _fetch_transcript_with_retry(video_id: str):
 
         except (NoTranscriptFound, TranscriptsDisabled):
             raise  # Genuinely no transcript — don't retry
+        except IpBlocked as e:
+            last_exc = e
+            if attempt < MAX_RETRIES:
+                delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
+                logger.warning(
+                    f"IP blocked fetching transcript for {video_id} "
+                    f"(attempt {attempt + 1}/{MAX_RETRIES + 1}). "
+                    f"Retrying in {delay}s…"
+                )
+                time.sleep(delay)
+            else:
+                raise
         except Exception as e:
             last_exc = e
             err_str = str(e)
@@ -113,8 +126,11 @@ def fetch_transcript(video: Video, db: Session) -> list[dict] | None:
         time.sleep(REQUEST_DELAY_SECONDS)
         return parsed
 
+    except IpBlocked:
+        logger.warning(f"IP blocked fetching transcript for {video.youtube_video_id} — retry later")
+        return None
     except TranscriptsDisabled:
-        logger.warning(f"Transcripts disabled for {video.youtube_video_id} (may be bot-detection)")
+        logger.warning(f"Transcripts disabled for {video.youtube_video_id}")
         return None
     except Exception as e:
         logger.error(f"Error fetching transcript for {video.youtube_video_id}: {e}")
