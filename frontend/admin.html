@@ -111,6 +111,16 @@
         </select>
       </div>
     </div>
+
+    <!-- Merge mode banner (hidden by default) -->
+    <div id="merge-banner" style="display:none;align-items:center;gap:12px;padding:12px 16px;margin-bottom:12px;background:rgba(245,166,35,0.12);border:1px solid var(--color-accent);border-radius:var(--radius);font-size:13px;">
+      <span style="flex:1;">
+        <strong style="color:var(--color-accent);">Merge mode:</strong>
+        <span id="merge-banner-text"></span>
+      </span>
+      <button class="btn btn-secondary btn-sm" onclick="cancelMerge()">Cancel</button>
+    </div>
+
     <div class="table-wrap">
       <table>
         <thead>

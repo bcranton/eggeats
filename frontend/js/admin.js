@@ -299,34 +299,56 @@ async function loadBusinesses() {
 
   try {
     const businesses = await apiFetch(`/api/admin/businesses${qs}`);
-    if (!businesses.length) {
-      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No businesses found.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = "";
     bizDataMap.clear();
-    businesses.forEach(b => {
-      bizDataMap.set(b.id, b);
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td><strong>${esc(b.name)}</strong>${b.pending_review_count > 0 ? ` <span class="chip chip-pending_review">${b.pending_review_count} review</span>` : ""}</td>
-        <td>${esc(b.city_name)}</td>
-        <td>${b.category ? esc(b.category) : "–"}</td>
-        <td><span class="chip chip-${b.review_status}">${b.review_status}</span></td>
-        <td>${b.mention_count}</td>
-        <td>${b.is_closed ? "🔒 Closed" : "–"}</td>
-        <td style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-secondary btn-sm" onclick="openEditModal(${b.id})">Edit</button>
-          ${b.review_status !== "approved" ? `<button class="btn btn-success btn-sm" onclick="quickApprove(${b.id})">✓ Approve</button>` : ""}
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
+    businesses.forEach(b => bizDataMap.set(b.id, b));
+    renderBizRows();
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:var(--color-negative);">Error loading businesses.</td></tr>`;
     console.error(e);
   }
+}
+
+function renderBizRows() {
+  const tbody = document.getElementById("biz-table-body");
+  const businesses = Array.from(bizDataMap.values());
+
+  if (!businesses.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No businesses found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = "";
+  businesses.forEach(b => {
+    const isMergeSource = mergeSourceId === b.id;
+    const inMergeMode = mergeSourceId !== null;
+
+    const tr = document.createElement("tr");
+    if (isMergeSource) tr.style.opacity = "0.5";
+
+    let actionBtns = "";
+    if (inMergeMode) {
+      if (!isMergeSource) {
+        actionBtns = `<button class="btn btn-primary btn-sm" onclick="confirmMerge(${b.id})">⇄ Merge here</button>`;
+      }
+    } else {
+      actionBtns = `
+        <button class="btn btn-secondary btn-sm" onclick="openEditModal(${b.id})">Edit</button>
+        ${b.review_status !== "approved" ? `<button class="btn btn-success btn-sm" onclick="quickApprove(${b.id})">✓ Approve</button>` : ""}
+        <button class="btn btn-secondary btn-sm" onclick="startMerge(${b.id})" title="Merge this business into another">⇄ Merge</button>
+      `;
+    }
+
+    tr.innerHTML = `
+      <td><strong>${esc(b.name)}</strong>${b.pending_review_count > 0 ? ` <span class="chip chip-pending_review">${b.pending_review_count} review</span>` : ""}</td>
+      <td>${esc(b.city_name)}</td>
+      <td>${b.category ? esc(b.category) : "–"}</td>
+      <td><span class="chip chip-${b.review_status}">${b.review_status}</span></td>
+      <td>${b.mention_count}</td>
+      <td>${b.is_closed ? "🔒 Closed" : "–"}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;">${actionBtns}</td>
+    `;
+    tbody.appendChild(tr);
+  });
 }
 
 async function quickApprove(bizId) {
@@ -344,6 +366,58 @@ async function quickApprove(bizId) {
 }
 
 document.getElementById("biz-status-filter").addEventListener("change", loadBusinesses);
+
+// ──────────────────────────────────────────────────────────
+// Merge mode
+// ──────────────────────────────────────────────────────────
+
+let mergeSourceId = null; // business selected as the one to be absorbed
+
+function startMerge(id) {
+  mergeSourceId = id;
+  const biz = bizDataMap.get(id);
+  const banner = document.getElementById("merge-banner");
+  document.getElementById("merge-banner-text").textContent =
+    ` "${biz.name}" will be absorbed — now click "Merge here" on the business to keep.`;
+  banner.style.display = "flex";
+  // Re-render rows to show Merge-here buttons
+  renderBizRows();
+}
+
+function cancelMerge() {
+  mergeSourceId = null;
+  document.getElementById("merge-banner").style.display = "none";
+  renderBizRows();
+}
+
+async function confirmMerge(keepId) {
+  const source = bizDataMap.get(mergeSourceId);
+  const target = bizDataMap.get(keepId);
+  if (!source || !target) return;
+
+  const ok = confirm(
+    `Merge "${source.name}" INTO "${target.name}"?\n\n` +
+    `• All ${source.mention_count} mention(s) from "${source.name}" will move to "${target.name}"\n` +
+    `• Addresses will be combined (duplicates removed)\n` +
+    `• "${source.name}" will be deleted\n\n` +
+    `This cannot be undone.`
+  );
+  if (!ok) return;
+
+  try {
+    await apiFetch("/api/admin/businesses/merge", {
+      method: "POST",
+      body: JSON.stringify({ keep_id: keepId, merge_ids: [mergeSourceId] }),
+    });
+    toast(`Merged "${source.name}" into "${target.name}"`, "success");
+    mergeSourceId = null;
+    document.getElementById("merge-banner").style.display = "none";
+    loadBusinesses();
+    loadStats();
+  } catch (e) {
+    toast(`Merge failed: ${e.message}`, "error");
+  }
+}
 
 // Edit modal
 let editBizData = null;

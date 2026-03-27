@@ -122,7 +122,7 @@ class MentionUpdateRequest(BaseModel):
 
 class MergeRequest(BaseModel):
     keep_id: int
-    merge_id: int  # will be deleted after mentions are migrated
+    merge_ids: list[int]  # all will be deleted after mentions are migrated
 
 
 class PipelineRunRequest(BaseModel):
@@ -689,24 +689,90 @@ def merge_businesses(
     _: AdminSession = Depends(get_admin_session),
 ):
     """
-    Merges two businesses: migrates all mentions from merge_id to keep_id,
-    then deletes the merge_id business.
+    Merges one or more businesses into a single target (keep_id).
+    - All mentions are reassigned to keep_id.
+    - All unique addresses are combined (deduplicated case-insensitively).
+    - keep_id's primary address/lat/lng is preferred; falls back to merge sources
+      if keep has no coordinates.
+    - Merged businesses are then deleted.
     """
     keep = db.query(Business).filter(Business.id == request.keep_id).first()
-    merge = db.query(Business).filter(Business.id == request.merge_id).first()
+    if not keep:
+        raise HTTPException(status_code=404, detail=f"Business {request.keep_id} not found")
 
-    if not keep or not merge:
-        raise HTTPException(status_code=404, detail="One or both businesses not found")
+    merges = db.query(Business).filter(Business.id.in_(request.merge_ids)).all()
+    if len(merges) != len(request.merge_ids):
+        raise HTTPException(status_code=404, detail="One or more merge businesses not found")
 
-    # Migrate mentions
-    db.query(Mention).filter(Mention.business_id == merge.id).update(
-        {"business_id": keep.id}
-    )
+    # ── Build a combined, deduplicated address list ──────────────────────────
+    # Each entry is {address: str, lat: float|None, lng: float|None}.
+    # We start with keep's addresses (primary + extras), then append merge sources.
+    def _collect_addresses(biz: Business) -> list[dict]:
+        entries = []
+        if biz.address:
+            entries.append({"address": biz.address, "lat": biz.lat, "lng": biz.lng})
+        if biz.extra_addresses_json:
+            try:
+                for e in json.loads(biz.extra_addresses_json):
+                    if isinstance(e, dict) and e.get("address"):
+                        entries.append({
+                            "address": e["address"],
+                            "lat": e.get("lat"),
+                            "lng": e.get("lng"),
+                        })
+                    elif isinstance(e, str) and e:
+                        entries.append({"address": e, "lat": None, "lng": None})
+            except (ValueError, TypeError):
+                pass
+        return entries
 
-    db.delete(merge)
+    combined: list[dict] = []
+    seen: set[str] = set()
+    for entry in _collect_addresses(keep) + [a for biz in merges for a in _collect_addresses(biz)]:
+        key = entry["address"].strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            combined.append(entry)
+
+    # Apply combined addresses back to keep
+    if combined:
+        first = combined[0]
+        keep.address = first["address"]
+        # Prefer keep's existing coords; fall back to whichever source has them
+        if not keep.lat:
+            keep.lat = first.get("lat")
+            keep.lng = first.get("lng")
+        extras = combined[1:]
+        keep.extra_addresses_json = json.dumps(extras) if extras else None
+    else:
+        # No addresses anywhere — try to inherit coords from a merge source
+        if not keep.lat:
+            for biz in merges:
+                if biz.lat:
+                    keep.lat = biz.lat
+                    keep.lng = biz.lng
+                    break
+
+    # ── Migrate mentions ─────────────────────────────────────────────────────
+    for biz in merges:
+        db.query(Mention).filter(Mention.business_id == biz.id).update(
+            {"business_id": keep.id}, synchronize_session=False
+        )
+
+    # ── Delete merged businesses ─────────────────────────────────────────────
+    for biz in merges:
+        db.delete(biz)
+
     db.commit()
 
-    return {"message": f"Merged business {request.merge_id} into {request.keep_id}"}
+    from app.cache import cache_clear
+    cache_clear()
+
+    return {
+        "message": f"Merged {len(merges)} business(es) into {keep.name} (id={keep.id})",
+        "keep_id": keep.id,
+        "merged_ids": request.merge_ids,
+    }
 
 
 # ---------------------------------------------------------------------------
