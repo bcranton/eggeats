@@ -26,14 +26,14 @@ STATIC_DIR = _docker_static if _docker_static.exists() else _repo_static
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting Northernlion Travel Guide API")
+    logger.info("Starting Egg Eats API")
     yield
     logger.info("Shutting down")
 
 
 app = FastAPI(
-    title="Northernlion Travel Guide",
-    description="API for the Northernlion Vancouver (and beyond) Travel Guide",
+    title="Egg Eats",
+    description="API for Egg Eats — A Northernlion Travel Guide",
     version="1.0.0",
     lifespan=lifespan,
 )

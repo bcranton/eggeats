@@ -1,5 +1,5 @@
 /* =========================================================
-   Northernlion Travel Guide — Map JS (Mapbox GL)
+   Egg Eats — Map JS (Mapbox GL)
    ========================================================= */
 
 const API = "";  // same-origin

@@ -13,7 +13,7 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-EXTRACTION_PROMPT = """You are analyzing a YouTube video transcript from Northernlion, a content creator based in Vancouver, BC, Canada who also travels to other cities. He frequently mentions local businesses, restaurants, cafes, bars, attractions, and other places.
+EXTRACTION_PROMPT = """You are analyzing a YouTube video transcript from Northernlion (NL), a content creator based in Vancouver, BC, Canada who also travels to other cities. He frequently mentions local businesses, restaurants, cafes, bars, attractions, and other places.
 
 Transcript segment with timestamps (format: [Ns] text):
 <transcript>
