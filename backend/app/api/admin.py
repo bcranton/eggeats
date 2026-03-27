@@ -97,6 +97,25 @@ class BusinessUpdateRequest(BaseModel):
     admin_notes: Optional[str] = None
 
 
+class MentionDetail(BaseModel):
+    id: int
+    video_id: str
+    video_title: str
+    timestamp_seconds: Optional[int]
+    youtube_url: str
+    sentiment: Optional[str]
+    sentiment_score: Optional[float]
+    quotes: list[str]
+
+    class Config:
+        from_attributes = True
+
+
+class MentionUpdateRequest(BaseModel):
+    sentiment: Optional[str] = None
+    quotes: Optional[list[str]] = None
+
+
 class MergeRequest(BaseModel):
     keep_id: int
     merge_id: int  # will be deleted after mentions are migrated
@@ -541,6 +560,77 @@ def update_business(
     business.updated_at = datetime.now(timezone.utc)
     db.commit()
     return {"message": "Business updated"}
+
+
+@router.get("/businesses/{business_id}/mentions", response_model=list[MentionDetail])
+def get_business_mentions(
+    business_id: int,
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """Returns all mentions for a business with video info and quotes."""
+    mentions = (
+        db.query(Mention)
+        .filter(Mention.business_id == business_id)
+        .options(joinedload(Mention.video))
+        .order_by(Mention.id)
+        .all()
+    )
+
+    result = []
+    for m in mentions:
+        video = m.video
+        youtube_url = f"https://www.youtube.com/watch?v={video.youtube_video_id}"
+        if m.timestamp_seconds:
+            youtube_url += f"&t={m.timestamp_seconds}s"
+        quotes = []
+        if m.quotes_json:
+            try:
+                quotes = json.loads(m.quotes_json)
+            except json.JSONDecodeError:
+                pass
+        result.append(MentionDetail(
+            id=m.id,
+            video_id=video.youtube_video_id,
+            video_title=video.title,
+            timestamp_seconds=m.timestamp_seconds,
+            youtube_url=youtube_url,
+            sentiment=m.sentiment.value if m.sentiment else None,
+            sentiment_score=m.sentiment_score,
+            quotes=quotes,
+        ))
+
+    return result
+
+
+@router.put("/mentions/{mention_id}")
+def update_mention(
+    mention_id: int,
+    request: MentionUpdateRequest,
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """Updates sentiment and/or quotes on a mention."""
+    from app.models import Sentiment as SentimentEnum
+    from app.cache import cache_clear
+
+    mention = db.query(Mention).filter(Mention.id == mention_id).first()
+    if not mention:
+        raise HTTPException(status_code=404, detail="Mention not found")
+
+    if request.sentiment is not None:
+        try:
+            mention.sentiment = SentimentEnum(request.sentiment)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid sentiment: {request.sentiment}")
+        mention.sentiment_score = {"positive": 0.8, "negative": -0.8, "neutral": 0.0, "mixed": 0.1}.get(request.sentiment, 0.0)
+
+    if request.quotes is not None:
+        mention.quotes_json = json.dumps(request.quotes)
+
+    db.commit()
+    cache_clear()
+    return {"message": "Mention updated"}
 
 
 @router.post("/businesses/merge")

@@ -339,7 +339,14 @@ document.getElementById("biz-status-filter").addEventListener("change", loadBusi
 let editBizData = null;
 const bizDataMap = new Map(); // keyed by business id — avoids embedding JSON in onclick attrs
 
-function openEditModal(id) {
+const SENTIMENT_LABELS = {
+  positive: "👍 Positive",
+  negative: "👎 Negative",
+  neutral:  "😐 Neutral",
+  mixed:    "🤔 Mixed",
+};
+
+async function openEditModal(id) {
   editBizData = bizDataMap.get(id);
   if (!editBizData) return;
   document.getElementById("edit-biz-id").value = id;
@@ -349,6 +356,67 @@ function openEditModal(id) {
   document.getElementById("edit-biz-notes").value = editBizData.admin_notes || "";
   document.getElementById("edit-biz-closed").checked = !!editBizData.is_closed;
   document.getElementById("edit-modal").style.display = "flex";
+
+  // Load mentions for vibe editing
+  const mentionsList = document.getElementById("edit-mentions-list");
+  mentionsList.innerHTML = `<span style="font-size:13px;color:var(--color-text-muted);">Loading…</span>`;
+  try {
+    const mentions = await apiFetch(`/api/admin/businesses/${id}/mentions`);
+    renderMentions(mentions);
+  } catch (e) {
+    mentionsList.innerHTML = `<span style="font-size:13px;color:var(--color-negative);">Failed to load mentions.</span>`;
+  }
+}
+
+function renderMentions(mentions) {
+  const list = document.getElementById("edit-mentions-list");
+  if (!mentions.length) {
+    list.innerHTML = `<span style="font-size:13px;color:var(--color-text-muted);">No mentions yet.</span>`;
+    return;
+  }
+
+  list.innerHTML = "";
+  mentions.forEach(m => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;flex-direction:column;gap:6px;padding:10px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);";
+
+    const timeLabel = m.timestamp_seconds ? ` · ${formatTime(m.timestamp_seconds)}` : "";
+    const title = m.video_title.length > 60 ? m.video_title.slice(0, 60) + "…" : m.video_title;
+
+    row.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+        <a href="${m.youtube_url}" target="_blank" style="font-size:12px;color:var(--color-accent);text-decoration:none;flex:1;min-width:0;"
+           title="${esc(m.video_title)}">▶ ${esc(title)}${timeLabel}</a>
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+          <select id="mention-sentiment-${m.id}" style="padding:4px 8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:12px;">
+            <option value="">— no vibe —</option>
+            ${Object.entries(SENTIMENT_LABELS).map(([v, l]) =>
+              `<option value="${v}" ${m.sentiment === v ? "selected" : ""}>${l}</option>`
+            ).join("")}
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="saveMentionVibe(${m.id})">Save</button>
+        </div>
+      </div>
+      ${m.quotes.length ? `<div style="font-size:12px;color:var(--color-text-muted);font-style:italic;padding-left:8px;border-left:2px solid var(--color-border);">${m.quotes.slice(0,2).map(q => `"${esc(q)}"`).join("<br>")}</div>` : ""}
+    `;
+    list.appendChild(row);
+  });
+}
+
+async function saveMentionVibe(mentionId) {
+  const select = document.getElementById(`mention-sentiment-${mentionId}`);
+  const sentiment = select.value || null;
+  try {
+    await apiFetch(`/api/admin/mentions/${mentionId}`, {
+      method: "PUT",
+      body: JSON.stringify({ sentiment }),
+    });
+    toast("Vibe updated", "success");
+    // Refresh the businesses table in background so sentiment_summary updates
+    loadBusinesses();
+  } catch (e) {
+    toast(`Failed: ${e.message}`, "error");
+  }
 }
 
 document.getElementById("edit-cancel").addEventListener("click", () => {

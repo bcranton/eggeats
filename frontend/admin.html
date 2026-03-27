@@ -173,11 +173,13 @@
 <!-- Toast container -->
 <div id="toast-container"></div>
 
-<!-- Edit business modal (simple inline) -->
+<!-- Edit business modal -->
 <div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:50;align-items:center;justify-content:center;">
-  <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);padding:24px;width:480px;max-width:95vw;">
+  <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);padding:24px;width:580px;max-width:95vw;max-height:90vh;overflow-y:auto;">
     <h3 style="margin-bottom:16px;">Edit Business</h3>
     <input type="hidden" id="edit-biz-id" />
+
+    <!-- Business fields -->
     <div style="display:flex;flex-direction:column;gap:10px;">
       <label style="font-size:13px;color:var(--color-text-muted);">Name</label>
       <input type="text" id="edit-biz-name" style="padding:8px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
@@ -199,17 +201,25 @@
         <option value="rejected">Rejected</option>
       </select>
       <label style="font-size:13px;color:var(--color-text-muted);">Admin Notes</label>
-      <textarea id="edit-biz-notes" rows="3" style="padding:8px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;resize:vertical;"></textarea>
+      <textarea id="edit-biz-notes" rows="2" style="padding:8px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;resize:vertical;"></textarea>
       <label style="font-size:13px;color:var(--color-text-muted);">
         <input type="checkbox" id="edit-biz-closed" /> Mark as permanently closed
       </label>
     </div>
-    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
+
+    <!-- Mentions / vibe overrides -->
+    <div style="margin-top:20px;border-top:1px solid var(--color-border);padding-top:16px;">
+      <div style="font-size:13px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Mentions &amp; Vibe</div>
+      <div id="edit-mentions-list" style="display:flex;flex-direction:column;gap:10px;">
+        <span style="font-size:13px;color:var(--color-text-muted);">Loading mentions…</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end;">
       <button class="btn btn-secondary" id="edit-cancel">Cancel</button>
-      <button class="btn btn-primary" id="edit-save">Save</button>
+      <button class="btn btn-primary" id="edit-save">Save Business</button>
     </div>
   </div>
-
 </div>
 
 <script src="/js/admin.js"></script>
