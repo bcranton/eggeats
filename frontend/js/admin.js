@@ -38,6 +38,7 @@ async function init() {
   loadReviewQueue();
   loadVideos();
   loadBusinesses();
+  loadSeedStatus();
 }
 
 // ──────────────────────────────────────────────────────────
@@ -385,6 +386,56 @@ function formatTime(secs) {
   const s = secs % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
+
+// ──────────────────────────────────────────────────────────
+// Setup / Seed
+// ──────────────────────────────────────────────────────────
+
+async function loadSeedStatus() {
+  const box = document.getElementById("seed-status-box");
+  if (!box) return;
+  try {
+    const s = await apiFetch("/api/admin/seed/status");
+    if (s.cities.length === 0) {
+      box.innerHTML = `<span style="color:var(--color-warning);">⚠ No cities seeded yet. Use the form below to seed the database before running the pipeline.</span>`;
+    } else {
+      const cityList = s.cities.map(c => `<strong>${esc(c.name)}</strong> (${esc(c.country)})`).join(", ");
+      const plList = s.playlists.map(p => `<strong>${esc(p.name)}</strong> <span style="color:var(--color-text-muted);">[${esc(p.youtube_playlist_id)}]</span>`).join(", ");
+      box.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div>✓ Cities: ${cityList}</div>
+          <div>✓ Playlists: ${plList || "<em>none</em>"}</div>
+        </div>`;
+    }
+  } catch (e) {
+    box.innerHTML = `<span style="color:var(--color-negative);">Error loading seed status.</span>`;
+  }
+}
+
+document.getElementById("btn-seed").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-seed");
+  btn.disabled = true;
+  try {
+    const result = await apiFetch("/api/admin/seed", {
+      method: "POST",
+      body: JSON.stringify({
+        city_name: document.getElementById("seed-city-name").value.trim(),
+        country: document.getElementById("seed-country").value.trim(),
+        search_keywords: document.getElementById("seed-keywords").value.trim(),
+        playlist_youtube_id: document.getElementById("seed-playlist-id").value.trim(),
+        playlist_name: document.getElementById("seed-playlist-name").value.trim(),
+      }),
+    });
+    const cityMsg = result.city.created ? `Created city "${result.city.name}"` : `City "${result.city.name}" already exists`;
+    const plMsg = result.playlist.created ? `Created playlist "${result.playlist.name}"` : `Playlist "${result.playlist.name}" already exists`;
+    toast(`${cityMsg}. ${plMsg}.`, "success");
+    loadSeedStatus();
+  } catch (e) {
+    toast(`Seed failed: ${e.message}`, "error");
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 // ── Start ──────────────────────────────────────────────────
 checkAuth();

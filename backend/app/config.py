@@ -8,6 +8,8 @@ class Settings(BaseSettings):
 
     # LLM — required for pipeline, optional at startup
     anthropic_api_key: str = ""
+    # Claude model for transcript extraction (update to newer models as released)
+    anthropic_model: str = "claude-sonnet-4-6"
 
     # YouTube Data API v3 — required for pipeline, optional at startup
     youtube_api_key: str = ""

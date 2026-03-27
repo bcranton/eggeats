@@ -108,6 +108,83 @@ class PipelineRunRequest(BaseModel):
     video_id: Optional[int] = None
 
 
+class SeedRequest(BaseModel):
+    city_name: str = "Vancouver"
+    country: str = "CA"
+    search_keywords: str = "Vancouver,BC,van,yvr,yaletown,gastown,kitsilano"
+    center_lat: float = 49.2827
+    center_lng: float = -123.1207
+    default_zoom: int = 12
+    playlist_youtube_id: str = "PLvswIqZLpR-VpoMuxzO9oT3F9-FtHScpn"
+    playlist_name: str = "Northernlion Vancouver"
+
+
+# ---------------------------------------------------------------------------
+# Setup / Seed
+# ---------------------------------------------------------------------------
+
+@router.post("/seed")
+def seed_database(
+    request: SeedRequest,
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """
+    Seeds the database with an initial city and playlist.
+    Safe to call multiple times — skips rows that already exist.
+    """
+    # City
+    city = db.query(City).filter(City.name == request.city_name).first()
+    created_city = False
+    if not city:
+        city = City(
+            name=request.city_name,
+            country=request.country,
+            search_keywords=request.search_keywords,
+            center_lat=request.center_lat,
+            center_lng=request.center_lng,
+            default_zoom=request.default_zoom,
+        )
+        db.add(city)
+        db.flush()
+        created_city = True
+
+    # Playlist
+    playlist = db.query(Playlist).filter(
+        Playlist.youtube_playlist_id == request.playlist_youtube_id
+    ).first()
+    created_playlist = False
+    if not playlist:
+        playlist = Playlist(
+            youtube_playlist_id=request.playlist_youtube_id,
+            name=request.playlist_name,
+            city_id=city.id,
+        )
+        db.add(playlist)
+        created_playlist = True
+
+    db.commit()
+
+    return {
+        "city": {"id": city.id, "name": city.name, "created": created_city},
+        "playlist": {"id": playlist.id, "name": playlist.name, "created": created_playlist},
+    }
+
+
+@router.get("/seed/status")
+def seed_status(
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """Returns current seed state so the UI can show what's configured."""
+    cities = db.query(City).all()
+    playlists = db.query(Playlist).all()
+    return {
+        "cities": [{"id": c.id, "name": c.name, "country": c.country} for c in cities],
+        "playlists": [{"id": p.id, "name": p.name, "youtube_playlist_id": p.youtube_playlist_id, "city_id": p.city_id} for p in playlists],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Review Queue
 # ---------------------------------------------------------------------------

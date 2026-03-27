@@ -76,7 +76,7 @@ def extract_businesses_from_segment(
     for attempt in range(max_retries):
         try:
             message = client.messages.create(
-                model="claude-sonnet-4-6",
+                model=settings.anthropic_model,
                 max_tokens=4096,
                 messages=[{"role": "user", "content": prompt}],
             )

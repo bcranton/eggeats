@@ -259,6 +259,15 @@ def run_pipeline(
     """
     summary = {"playlists_checked": 0, "new_videos_found": 0, "processed": 0, "failed": 0, "skipped": 0}
 
+    # Reset any videos stuck in "processing" state from a previously interrupted run
+    stuck = db.query(Video).filter(Video.processing_status == ProcessingStatus.processing).all()
+    for v in stuck:
+        v.processing_status = ProcessingStatus.pending
+        v.error_message = "Reset: previous run was interrupted"
+    if stuck:
+        db.commit()
+        logger.info(f"Reset {len(stuck)} stuck video(s) from 'processing' to 'pending'")
+
     # Step 1: Fetch new videos from playlists
     if video_id is None:
         playlist_query = db.query(Playlist)
@@ -276,9 +285,11 @@ def run_pipeline(
     if video_id:
         videos_to_process = db.query(Video).filter(Video.id == video_id).all()
     else:
-        statuses = [ProcessingStatus.pending]
+        # Always retry failed videos — they may have failed due to transient errors
+        # (e.g. exhausted API credits). only_new=False additionally re-runs completed videos.
+        statuses = [ProcessingStatus.pending, ProcessingStatus.failed]
         if not only_new:
-            statuses.extend([ProcessingStatus.failed, ProcessingStatus.completed])
+            statuses.append(ProcessingStatus.completed)
 
         video_query = db.query(Video).filter(Video.processing_status.in_(statuses))
         if playlist_id:
