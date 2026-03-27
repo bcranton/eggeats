@@ -565,7 +565,39 @@ def update_business(
     if request.lng is not None:
         business.lng = request.lng
     if request.address is not None:
-        business.address = request.address
+        from app.pipeline.geocoder import geocode_address as _geo_addr
+        new_addr = (request.address or "").strip()
+        current_addr = (business.address or "").strip()
+        if not new_addr:
+            # Clearing the primary address
+            business.address = None
+            business.lat = None
+            business.lng = None
+        elif new_addr != current_addr or not business.lat:
+            # Address changed or lat/lng missing — geocode to get coordinates.
+            # First check if this address was previously stored as an extra (reuse cached coords).
+            cached_extra: dict | None = None
+            if business.extra_addresses_json:
+                try:
+                    for entry in json.loads(business.extra_addresses_json):
+                        if isinstance(entry, dict) and entry.get("address", "").strip() == new_addr:
+                            cached_extra = entry
+                            break
+                except (ValueError, TypeError):
+                    pass
+
+            if cached_extra:
+                business.address = cached_extra["address"]
+                business.lat = cached_extra.get("lat")
+                business.lng = cached_extra.get("lng")
+            else:
+                geo = _geo_addr(new_addr)
+                business.address = geo["address"] or new_addr
+                business.lat = geo["lat"]
+                business.lng = geo["lng"]
+        else:
+            business.address = new_addr
+
     if request.extra_addresses is not None:
         if not request.extra_addresses:
             business.extra_addresses_json = None
@@ -576,7 +608,8 @@ def update_business(
             if business.extra_addresses_json:
                 try:
                     for entry in json.loads(business.extra_addresses_json):
-                        existing[entry["address"]] = entry
+                        if isinstance(entry, dict) and entry.get("address"):
+                            existing[entry["address"].strip()] = entry
                 except (ValueError, TypeError):
                     pass
 
