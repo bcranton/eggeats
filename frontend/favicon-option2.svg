@@ -1,0 +1,11 @@
+<!-- Option 2: Map pin with egg yolk -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark background -->
+  <rect width="32" height="32" rx="4" fill="#1c1c24"/>
+  <!-- Map pin body (crimson) -->
+  <path d="M16 3 C10.5 3 6 7.5 6 13 C6 20 16 29 16 29 C16 29 26 20 26 13 C26 7.5 21.5 3 16 3 Z" fill="#c0253a"/>
+  <!-- Egg white circle inside pin -->
+  <circle cx="16" cy="13" r="6" fill="#eeeef2"/>
+  <!-- Yolk -->
+  <circle cx="16" cy="13" r="3.5" fill="#f59e0b"/>
+</svg>
