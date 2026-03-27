@@ -9,11 +9,12 @@ let map = null;
 let allPins = [];
 let currentMarkers = [];
 let currentPopup = null;
+let citiesById = {};
 let activeFilters = {
   city: "",
   category: "",
   sentiment: "",
-  showClosed: false,
+  showClosed: true,
 };
 
 // Sentiment → marker colour mapping
@@ -47,6 +48,7 @@ async function bootstrap() {
 
 async function loadCities() {
   const cities = await fetch(`${API}/api/cities`).then(r => r.json());
+  citiesById = Object.fromEntries(cities.map(c => [String(c.id), c]));
   const select = document.getElementById("filter-city");
   cities.forEach(city => {
     const opt = document.createElement("option");
@@ -238,6 +240,17 @@ function closePanel() {
 document.getElementById("filter-city").addEventListener("change", e => {
   activeFilters.city = e.target.value;
   loadMapData();
+  // Fly to the selected city
+  if (activeFilters.city && map) {
+    const city = citiesById[activeFilters.city];
+    if (city) {
+      map.flyTo({
+        center: [city.center_lng, city.center_lat],
+        zoom: city.default_zoom,
+        duration: 1200,
+      });
+    }
+  }
 });
 
 document.getElementById("filter-category").addEventListener("change", e => {
