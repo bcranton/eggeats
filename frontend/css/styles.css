@@ -15,7 +15,9 @@
   --color-negative: #d92b3a;
   --color-neutral: #7a9cc5;
   --color-mixed: #f59e0b;
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-title: 'Alfa Slab One', serif;
+  --font-heading: 'Oswald', sans-serif;
+  --font: 'Barlow', -apple-system, BlinkMacSystemFont, sans-serif;
   --radius: 8px;
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
 }
@@ -47,16 +49,21 @@ body {
 }
 
 .site-header h1 {
-  font-size: 32px;
-  font-weight: 700;
+  font-family: var(--font-title);
+  font-size: 36px;
+  font-weight: 400; /* Alfa Slab One is inherently heavy */
   color: var(--color-accent);
-  letter-spacing: -0.5px;
+  letter-spacing: 1px;
 }
 
 .site-header .subtitle {
+  font-family: var(--font-heading);
   font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  text-transform: uppercase;
   color: var(--color-text-muted);
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .admin-link {
@@ -112,10 +119,11 @@ body {
 }
 
 .panel-heading {
-  font-size: 11px;
-  font-weight: 600;
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 1.5px;
   color: var(--color-text-muted);
 }
 
@@ -169,10 +177,11 @@ body {
 }
 
 .filter-group label {
-  font-size: 11px;
+  font-family: var(--font-heading);
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 1px;
   color: var(--color-text-muted);
 }
 
@@ -260,8 +269,9 @@ select.filter-select:focus {
 }
 
 .stat-box .num {
-  font-size: 26px;
-  font-weight: 700;
+  font-family: var(--font-title);
+  font-size: 28px;
+  font-weight: 400;
   color: var(--color-accent);
 }
 
@@ -303,8 +313,10 @@ select.filter-select:focus {
 }
 
 .info-panel-header .business-name {
-  font-size: 18px;
+  font-family: var(--font-heading);
+  font-size: 20px;
   font-weight: 700;
+  letter-spacing: 0.5px;
   line-height: 1.3;
 }
 
