@@ -335,8 +335,23 @@ function addMarkers(visible) {
 
   visiblePins = visible;
 
+  // Filter to pins geographically close to the city centre so that
+  // businesses with stale/wrong coordinates from other cities don't
+  // pollute the cycle and teleport the user across the world.
+  const city = citiesById[activeFilters.city];
+  if (city && city.center_lat && city.center_lng) {
+    visiblePins = visible.filter(p =>
+      Math.abs(p.lat - city.center_lat) < 1.5 &&
+      Math.abs(p.lng - city.center_lng) < 1.5
+    );
+  }
+
+  // Re-assign stable indices based on the filtered list so clicks and
+  // the cycle counter stay in sync.
+  const pinIndexMap = new Map(visiblePins.map((p, i) => [p.id, i]));
+
   // Add markers
-  visible.forEach((pin, idx) => {
+  visible.forEach((pin) => {
     const color = SENTIMENT_COLORS[pin.sentiment_summary] || SENTIMENT_COLORS.null;
 
     // Create custom marker element
@@ -372,16 +387,21 @@ function addMarkers(visible) {
 
     el.addEventListener("click", (e) => {
       e.stopPropagation();
-      openBusinessPanel(pin.id, idx);
+      // Use the index from the geo-filtered visiblePins list
+      openBusinessPanel(pin.id, pinIndexMap.get(pin.id) ?? -1);
     });
 
     currentMarkers.push(marker);
   });
 
-  // Update stats
-  document.getElementById("stat-places").textContent = visible.length;
-  const totalMentions = visible.reduce((sum, p) => sum + p.mention_count, 0);
-  document.getElementById("stat-mentions").textContent = totalMentions;
+  // Update stats — include no-location businesses so counts match the dropdown
+  const noLocCount = noLocationData ? noLocationData.length : 0;
+  document.getElementById("stat-places").textContent = visible.length + noLocCount;
+  const mapMentions = visible.reduce((sum, p) => sum + p.mention_count, 0);
+  const noLocMentions = (noLocationData || []).reduce(
+    (sum, b) => sum + (b.mentions ? b.mentions.length : 0), 0
+  );
+  document.getElementById("stat-mentions").textContent = mapMentions + noLocMentions;
 
   document.getElementById("loading").classList.add("hidden");
 }
@@ -490,14 +510,17 @@ function updatePanelNav() {
 
   nav.style.display = "flex";
   counter.textContent = `${currentPinIndex + 1} / ${total}`;
-  prevBtn.disabled = currentPinIndex === 0;
-  nextBtn.disabled = currentPinIndex === total - 1;
+  prevBtn.disabled = false;
+  nextBtn.disabled = false;
 }
 
 function navigateToPin(index) {
-  if (index < 0 || index >= visiblePins.length) return;
-  const pin = visiblePins[index];
-  openBusinessPanel(pin.id, index);
+  const total = visiblePins.length;
+  if (!total) return;
+  // Wrap around
+  const wrapped = ((index % total) + total) % total;
+  const pin = visiblePins[wrapped];
+  openBusinessPanel(pin.id, wrapped);
   map.easeTo({ center: [pin.lng, pin.lat], duration: 300 });
 }
 
