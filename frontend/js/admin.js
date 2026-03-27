@@ -33,12 +33,22 @@ document.getElementById("btn-logout").addEventListener("click", async () => {
 // ──────────────────────────────────────────────────────────
 
 async function init() {
-  await loadStats();
+  await Promise.all([loadStats(), loadCities()]);
   setupTabs();
   loadReviewQueue();
   loadVideos();
   loadBusinesses();
   loadSeedStatus();
+}
+
+let citiesList = [];
+
+async function loadCities() {
+  try {
+    citiesList = await apiFetch("/api/cities");
+  } catch (e) {
+    console.error("Failed to load cities", e);
+  }
 }
 
 // ──────────────────────────────────────────────────────────
@@ -351,6 +361,12 @@ async function openEditModal(id) {
   if (!editBizData) return;
   document.getElementById("edit-biz-id").value = id;
   document.getElementById("edit-biz-name").value = editBizData.name || "";
+
+  // Populate city dropdown
+  const citySelect = document.getElementById("edit-biz-city");
+  citySelect.innerHTML = citiesList.map(c =>
+    `<option value="${c.id}" ${c.id == editBizData.city_id ? "selected" : ""}>${esc(c.name)}</option>`
+  ).join("");
   document.getElementById("edit-biz-category").value = editBizData.category || "other";
   document.getElementById("edit-biz-review-status").value = editBizData.review_status || "pending_review";
   // Populate addresses: primary first, then extras
@@ -487,6 +503,7 @@ document.getElementById("edit-save").addEventListener("click", async () => {
     .map(i => i.value.trim()).filter(Boolean);
   const payload = {
     name: document.getElementById("edit-biz-name").value.trim(),
+    city_id: parseInt(document.getElementById("edit-biz-city").value) || null,
     category: document.getElementById("edit-biz-category").value,
     review_status: document.getElementById("edit-biz-review-status").value,
     address: allAddrs[0] || null,

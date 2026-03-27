@@ -78,6 +78,7 @@ class BusinessAdmin(BaseModel):
     is_closed: bool
     review_status: str
     admin_notes: Optional[str]
+    city_id: int
     city_name: str
     mention_count: int
     pending_review_count: int
@@ -89,6 +90,7 @@ class BusinessAdmin(BaseModel):
 class BusinessUpdateRequest(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None
+    city_id: Optional[int] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
     address: Optional[str] = None
@@ -528,6 +530,7 @@ def get_businesses(
             is_closed=b.is_closed,
             review_status=b.review_status.value,
             admin_notes=b.admin_notes,
+            city_id=b.city_id,
             city_name=b.city.name,
             mention_count=len(b.mentions),
             pending_review_count=pending_reviews,
@@ -552,6 +555,11 @@ def update_business(
         business.name = request.name
     if request.category is not None:
         business.category = request.category
+    if request.city_id is not None:
+        city = db.query(City).filter(City.id == request.city_id).first()
+        if not city:
+            raise HTTPException(status_code=400, detail=f"City {request.city_id} not found")
+        business.city_id = request.city_id
     if request.lat is not None:
         business.lat = request.lat
     if request.lng is not None:
