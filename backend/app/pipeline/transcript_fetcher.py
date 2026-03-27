@@ -50,24 +50,8 @@ def _fetch_transcript_with_retry(video_id: str):
 
             return transcript
 
-        except NoTranscriptFound:
+        except (NoTranscriptFound, TranscriptsDisabled):
             raise  # Genuinely no transcript — don't retry
-        except TranscriptsDisabled as e:
-            # TranscriptsDisabled can be a misclassified bot-detection block.
-            # Retry with backoff; only treat as permanent on the final attempt.
-            last_exc = e
-            err_str = str(e)
-            if attempt < MAX_RETRIES:
-                delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
-                logger.warning(
-                    f"TranscriptsDisabled for {video_id} (may be bot-detection) "
-                    f"(attempt {attempt + 1}/{MAX_RETRIES + 1}, detail: {err_str!r}). "
-                    f"Retrying in {delay}s…"
-                )
-                time.sleep(delay)
-            else:
-                logger.warning(f"TranscriptsDisabled for {video_id} after {MAX_RETRIES + 1} attempts: {err_str!r}")
-                raise
         except Exception as e:
             last_exc = e
             err_str = str(e)
