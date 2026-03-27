@@ -305,8 +305,14 @@ select.filter-select:focus {
 }
 
 .info-panel-header {
-  padding: 16px;
+  padding: 16px 16px 14px;
   border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel-header-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -315,44 +321,52 @@ select.filter-select:focus {
 
 .info-panel-header .business-name {
   font-family: var(--font-heading);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.5px;
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 .close-btn {
-  background: none;
-  border: none;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 20px;
+  font-size: 14px;
   flex-shrink: 0;
-  padding: 2px 6px;
-  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  margin-top: 2px;
 }
 
 .close-btn:hover {
-  background: var(--color-surface-2);
+  background: var(--color-border);
   color: var(--color-text);
 }
 
 .info-panel-meta {
-  padding: 0 16px 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
+  min-height: 0;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 10px;
+  padding: 3px 9px;
   border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: capitalize;
 }
 
 .badge-category {
@@ -647,9 +661,9 @@ select.filter-select:focus {
     height: 24px !important;
   }
 
-  /* Slightly larger text in panel on mobile */
+  /* Slightly smaller text in panel on mobile */
   .info-panel-header .business-name {
-    font-size: 18px;
+    font-size: 19px;
   }
 
   .mention-card .video-title {
