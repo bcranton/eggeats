@@ -353,6 +353,7 @@ async function openEditModal(id) {
   document.getElementById("edit-biz-name").value = editBizData.name || "";
   document.getElementById("edit-biz-category").value = editBizData.category || "other";
   document.getElementById("edit-biz-review-status").value = editBizData.review_status || "pending_review";
+  document.getElementById("edit-biz-address").value = editBizData.address || "";
   document.getElementById("edit-biz-notes").value = editBizData.admin_notes || "";
   document.getElementById("edit-biz-closed").checked = !!editBizData.is_closed;
   document.getElementById("edit-modal").style.display = "flex";
@@ -378,41 +379,79 @@ function renderMentions(mentions) {
   list.innerHTML = "";
   mentions.forEach(m => {
     const row = document.createElement("div");
-    row.style.cssText = "display:flex;flex-direction:column;gap:6px;padding:10px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);";
+    row.style.cssText = "display:flex;flex-direction:column;gap:8px;padding:12px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);";
 
     const timeLabel = m.timestamp_seconds ? ` · ${formatTime(m.timestamp_seconds)}` : "";
     const title = m.video_title.length > 60 ? m.video_title.slice(0, 60) + "…" : m.video_title;
+
+    // Build quote rows HTML
+    const quotesHtml = (m.quotes.length ? m.quotes : [""]).map((q, i) => `
+      <div class="quote-row" style="display:flex;gap:6px;align-items:flex-start;">
+        <textarea rows="2" data-quote-idx="${i}"
+          style="flex:1;padding:6px 8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:12px;resize:vertical;line-height:1.5;">${esc(q)}</textarea>
+        <button class="btn btn-danger btn-sm" style="margin-top:2px;" onclick="removeQuote(this)">✕</button>
+      </div>
+    `).join("");
 
     row.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
         <a href="${m.youtube_url}" target="_blank" style="font-size:12px;color:var(--color-accent);text-decoration:none;flex:1;min-width:0;"
            title="${esc(m.video_title)}">▶ ${esc(title)}${timeLabel}</a>
         <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
-          <select id="mention-sentiment-${m.id}" style="padding:4px 8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:12px;">
+          <select id="mention-sentiment-${m.id}"
+            style="padding:4px 8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:12px;">
             <option value="">— no vibe —</option>
             ${Object.entries(SENTIMENT_LABELS).map(([v, l]) =>
               `<option value="${v}" ${m.sentiment === v ? "selected" : ""}>${l}</option>`
             ).join("")}
           </select>
-          <button class="btn btn-secondary btn-sm" onclick="saveMentionVibe(${m.id})">Save</button>
         </div>
       </div>
-      ${m.quotes.length ? `<div style="font-size:12px;color:var(--color-text-muted);font-style:italic;padding-left:8px;border-left:2px solid var(--color-border);">${m.quotes.slice(0,2).map(q => `"${esc(q)}"`).join("<br>")}</div>` : ""}
+      <div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.5px;">Quotes</div>
+      <div class="quotes-container" id="quotes-${m.id}" style="display:flex;flex-direction:column;gap:6px;">
+        ${quotesHtml}
+      </div>
+      <div style="display:flex;gap:6px;justify-content:flex-end;">
+        <button class="btn btn-secondary btn-sm" onclick="addQuote(${m.id})">+ Add quote</button>
+        <button class="btn btn-primary btn-sm" onclick="saveMention(${m.id})">Save</button>
+      </div>
     `;
     list.appendChild(row);
   });
 }
 
-async function saveMentionVibe(mentionId) {
-  const select = document.getElementById(`mention-sentiment-${mentionId}`);
-  const sentiment = select.value || null;
+function addQuote(mentionId) {
+  const container = document.getElementById(`quotes-${mentionId}`);
+  const idx = container.querySelectorAll(".quote-row").length;
+  const div = document.createElement("div");
+  div.className = "quote-row";
+  div.style.cssText = "display:flex;gap:6px;align-items:flex-start;";
+  div.innerHTML = `
+    <textarea rows="2" data-quote-idx="${idx}"
+      style="flex:1;padding:6px 8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:12px;resize:vertical;line-height:1.5;"></textarea>
+    <button class="btn btn-danger btn-sm" style="margin-top:2px;" onclick="removeQuote(this)">✕</button>
+  `;
+  container.appendChild(div);
+  div.querySelector("textarea").focus();
+}
+
+function removeQuote(btn) {
+  btn.closest(".quote-row").remove();
+}
+
+async function saveMention(mentionId) {
+  const sentiment = document.getElementById(`mention-sentiment-${mentionId}`).value || null;
+  const container = document.getElementById(`quotes-${mentionId}`);
+  const quotes = Array.from(container.querySelectorAll("textarea"))
+    .map(t => t.value.trim())
+    .filter(Boolean);
+
   try {
     await apiFetch(`/api/admin/mentions/${mentionId}`, {
       method: "PUT",
-      body: JSON.stringify({ sentiment }),
+      body: JSON.stringify({ sentiment, quotes }),
     });
-    toast("Vibe updated", "success");
-    // Refresh the businesses table in background so sentiment_summary updates
+    toast("Mention saved", "success");
     loadBusinesses();
   } catch (e) {
     toast(`Failed: ${e.message}`, "error");
@@ -429,6 +468,7 @@ document.getElementById("edit-save").addEventListener("click", async () => {
     name: document.getElementById("edit-biz-name").value.trim(),
     category: document.getElementById("edit-biz-category").value,
     review_status: document.getElementById("edit-biz-review-status").value,
+    address: document.getElementById("edit-biz-address").value.trim() || null,
     admin_notes: document.getElementById("edit-biz-notes").value.trim() || null,
     is_closed: document.getElementById("edit-biz-closed").checked,
   };
