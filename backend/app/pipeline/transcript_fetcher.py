@@ -17,8 +17,9 @@ logger = logging.getLogger(__name__)
 
 TRANSCRIPT_API_URL = "https://youtube-transcript-api-tau-one.vercel.app/transcript"
 
-# Delay between successful fetches
-REQUEST_DELAY_SECONDS = 1.0
+# 5 requests/minute limit on the hosted API → minimum 12s between requests.
+# Using 13s for a small safety buffer.
+REQUEST_DELAY_SECONDS = 13.0
 
 # Retry settings for transient errors (429, 5xx, timeouts)
 MAX_RETRIES = 4
