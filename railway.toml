@@ -5,7 +5,7 @@ dockerfilePath = "backend/Dockerfile"
 watchPatterns = ["backend/**", "frontend/**"]
 
 [deploy]
-startCommand = "alembic upgrade head && python -c 'from app.main import app; print(\"Import OK\")' && uvicorn app.main:app --host 0.0.0.0 --port $PORT 2>&1"
+startCommand = "{ alembic upgrade head && echo '=== alembic OK ===' && python -c 'from app.main import app; print(\"Import OK\")' && echo '=== import OK ===' && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT; } 2>&1"
 healthcheckPath = "/health"
 healthcheckTimeout = 120
 restartPolicyType = "on_failure"
