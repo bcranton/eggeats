@@ -247,9 +247,10 @@ def process_video(db: Session, video: Video, cities: list[City]) -> bool:
         if total_extractions == 0:
             logger.info(f"No keyword matches in any city for {video.youtube_video_id}")
 
-        # Step 5: Mark video complete
+        # Step 5: Mark video complete, clear any previous error
         video.processing_status = ProcessingStatus.completed
         video.processed_at = datetime.now(timezone.utc)
+        video.error_message = None
         db.commit()
         logger.info(f"Completed {video.youtube_video_id} ({total_extractions} extraction(s) across all cities)")
         return True

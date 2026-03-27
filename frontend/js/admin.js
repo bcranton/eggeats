@@ -192,7 +192,7 @@ async function loadVideos() {
         ? new Date(v.published_at).toLocaleDateString()
         : "–";
       const errorHtml = v.error_message
-        ? `<span title="${esc(v.error_message)}" style="color:var(--color-negative);cursor:help;">⚠ Error</span>`
+        ? `<span class="error-badge" data-error="${esc(v.error_message)}">⚠ Error<div class="error-tooltip">${esc(v.error_message)}</div></span>`
         : "–";
 
       tr.innerHTML = `

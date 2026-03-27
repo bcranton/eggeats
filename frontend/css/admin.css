@@ -195,6 +195,46 @@ tbody td { padding: 12px 14px; vertical-align: middle; }
 
 .truncate { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ── Error badge with tooltip ────────────────────────── */
+.error-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-negative);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.error-tooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  background: #1e1e1e;
+  border: 1px solid var(--color-negative);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 380px;
+  min-width: 200px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.error-badge:hover .error-tooltip,
+.error-badge.open .error-tooltip {
+  display: block;
+}
+
 /* ── Status chips ─────────────────────────────────────── */
 .chip {
   display: inline-block;
