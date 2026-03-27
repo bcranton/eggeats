@@ -386,10 +386,15 @@ def _run_pipeline_bg(
     video_id: Optional[int] = None,
 ):
     """Background task wrapper for pipeline."""
+    import logging
+    _logger = logging.getLogger(__name__)
     from app.database import SessionLocal
     db = SessionLocal()
     try:
         run_pipeline(db=db, only_new=only_new, playlist_id=playlist_id, video_id=video_id)
+    except Exception:
+        _logger.exception("Pipeline background task failed")
+        raise
     finally:
         db.close()
 

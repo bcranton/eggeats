@@ -40,6 +40,7 @@ def fetch_playlist_videos(db: Session, playlist: Playlist) -> list[str]:
             break
 
     newly_added = []
+    seen_in_batch: set[str] = set()  # guard against duplicate video IDs within the same playlist page set
     for item in all_items:
         snippet = item.get("snippet", {})
         content_details = item.get("contentDetails", {})
@@ -47,7 +48,12 @@ def fetch_playlist_videos(db: Session, playlist: Playlist) -> list[str]:
         if not video_id:
             continue
 
-        # Skip if already known
+        # Skip duplicates within this batch (playlist can have the same video on multiple pages)
+        if video_id in seen_in_batch:
+            continue
+        seen_in_batch.add(video_id)
+
+        # Skip if already committed to DB from a prior run
         existing = db.query(Video).filter(Video.youtube_video_id == video_id).first()
         if existing:
             continue
