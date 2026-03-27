@@ -175,76 +175,70 @@ body {
   min-height: 0; /* allow map to shrink when strip is visible */
 }
 
-/* ── Unlocated strip (below map) ─────────────────────── */
-.unlocated-strip {
+/* ── Unlocated section (below map, full vertical list) ── */
+.unlocated-section {
   flex-shrink: 0;
-  border-top: 1px solid var(--color-border);
+  max-height: 42vh;
+  border-top: 2px solid var(--color-border);
   background: var(--color-surface);
   display: flex;
   flex-direction: column;
-  max-height: 160px;
-}
-
-.unlocated-strip-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 7px 14px 4px;
-  flex-shrink: 0;
-}
-
-.unlocated-strip-body {
-  display: flex;
-  gap: 8px;
-  padding: 6px 14px 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-}
-
-.unlocated-card {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  width: 180px;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: 9px 11px;
-  cursor: pointer;
-  transition: border-color 0.15s;
-}
-
-.unlocated-card:hover {
-  border-color: var(--color-accent);
-}
-
-.unlocated-card-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  border: 1.5px solid rgba(255,255,255,0.2);
-}
-
-.unlocated-card-name {
-  font-family: var(--font-heading);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text);
-  line-height: 1.3;
-  /* clamp to 2 lines */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.unlocated-card-badges {
+.unlocated-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.unlocated-section-body {
+  overflow-y: auto;
+  padding: 12px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+}
+
+.unlocated-item {
+  padding: 14px 16px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.unlocated-item-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.unlocated-item-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.2);
+}
+
+.unlocated-item-name {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.unlocated-item-badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 5px;
+  margin-bottom: 4px;
 }
 
 /* ── List view (virtual / no-fixed-location city) ────── */

@@ -76,27 +76,50 @@ function renderUnlocatedStrip() {
     return;
   }
 
-  strip.style.display = "";
+  // Update heading with city name
+  const city = citiesById[activeFilters.city];
+  const cityLabel = city ? city.name : "This City";
+  document.getElementById("unlocated-strip-heading").textContent =
+    `${cityLabel} — No Fixed Location`;
   document.getElementById("unlocated-strip-count").textContent =
-    `${items.length} place${items.length !== 1 ? "s" : ""} — click for details`;
+    `${items.length} place${items.length !== 1 ? "s" : ""}`;
+
+  strip.style.display = "flex";
 
   body.innerHTML = "";
   items.forEach(biz => {
-    const color = SENTIMENT_COLORS[biz.sentiment_summary] || SENTIMENT_COLORS.null;
     const card = document.createElement("div");
-    card.className = "unlocated-card";
-    card.onclick = () => openBusinessPanel(biz.id);
+    card.className = "unlocated-item";
 
-    const badges = [
+    const sentimentColor = SENTIMENT_COLORS[biz.sentiment_summary] || SENTIMENT_COLORS.null;
+    const sentimentLabel = biz.sentiment_summary ? capitalise(biz.sentiment_summary) : null;
+
+    const badgesHtml = [
       biz.category ? `<span class="badge badge-category">${escapeHtml(biz.category)}</span>` : "",
-      biz.sentiment_summary ? `<span class="badge badge-sentiment-${biz.sentiment_summary}">${sentimentEmoji(biz.sentiment_summary)} ${capitalise(biz.sentiment_summary)}</span>` : "",
+      sentimentLabel ? `<span class="badge badge-sentiment-${biz.sentiment_summary}">${sentimentEmoji(biz.sentiment_summary)} ${sentimentLabel}</span>` : "",
       biz.is_closed ? `<span class="badge badge-closed">Closed</span>` : "",
     ].filter(Boolean).join("");
 
+    const mentionsHtml = (biz.mentions || []).map(mention => {
+      const quotesHtml = (mention.quotes || [])
+        .map(q => `<div class="quote">"${escapeHtml(q)}"</div>`)
+        .join("");
+      const timeLabel = mention.timestamp_seconds ? ` (${formatTime(mention.timestamp_seconds)})` : "";
+      return `
+        <div class="mention-card" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--color-border);">
+          <div class="video-title">${escapeHtml(mention.video_title)}</div>
+          ${quotesHtml || `<div class="quote" style="opacity:0.5">No quotes extracted.</div>`}
+          <a class="watch-link" href="${mention.youtube_url}" target="_blank" rel="noopener">▶ Watch on YouTube${timeLabel}</a>
+        </div>`;
+    }).join("");
+
     card.innerHTML = `
-      <div class="unlocated-card-dot" style="background:${color};"></div>
-      <div class="unlocated-card-name">${escapeHtml(biz.name)}</div>
-      ${badges ? `<div class="unlocated-card-badges">${badges}</div>` : ""}
+      <div class="unlocated-item-header">
+        <div class="unlocated-item-dot" style="background:${sentimentColor};"></div>
+        <div class="unlocated-item-name">${escapeHtml(biz.name)}</div>
+      </div>
+      ${badgesHtml ? `<div class="unlocated-item-badges">${badgesHtml}</div>` : ""}
+      ${mentionsHtml}
     `;
     body.appendChild(card);
   });
@@ -178,9 +201,8 @@ async function loadListView() {
 function showListView() {
   document.getElementById("map").style.display = "none";
   document.getElementById("list-view").style.display = "flex";
-  // Hide the slide-in no-location panel (it's not needed in this mode)
   document.getElementById("no-location-stat").style.display = "none";
-  document.getElementById("mobile-noloc-btn").style.display = "none";
+  document.getElementById("unlocated-strip").style.display = "none";
 }
 
 function showMapView() {
