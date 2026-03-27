@@ -64,7 +64,7 @@ def _fetch_transcript_with_retry(video_id: str) -> list[dict] | None:
         try:
             response = httpx.post(
                 TRANSCRIPT_API_URL,
-                json={"video_url": video_url},
+                json={"url": video_url},
                 timeout=30,
             )
 
