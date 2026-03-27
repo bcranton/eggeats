@@ -331,7 +331,9 @@ async function openBusinessPanel(businessId) {
     // Address / website
     const addressEl = document.getElementById("panel-address");
     const parts = [];
-    if (biz.address) parts.push(escapeHtml(biz.address));
+    if (biz.addresses && biz.addresses.length) {
+      parts.push(biz.addresses.map(a => escapeHtml(a)).join(" &bull; "));
+    }
     if (biz.website) parts.push(`<a href="${biz.website}" target="_blank" rel="noopener">${escapeHtml(biz.website)}</a>`);
     addressEl.innerHTML = parts.join(" &mdash; ");
 

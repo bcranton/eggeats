@@ -353,7 +353,13 @@ async function openEditModal(id) {
   document.getElementById("edit-biz-name").value = editBizData.name || "";
   document.getElementById("edit-biz-category").value = editBizData.category || "other";
   document.getElementById("edit-biz-review-status").value = editBizData.review_status || "pending_review";
-  document.getElementById("edit-biz-address").value = editBizData.address || "";
+  // Populate addresses: primary first, then extras
+  const allAddresses = [];
+  if (editBizData.address) allAddresses.push(editBizData.address);
+  if (editBizData.extra_addresses) allAddresses.push(...editBizData.extra_addresses);
+  const addrContainer = document.getElementById("edit-biz-addresses");
+  addrContainer.innerHTML = "";
+  (allAddresses.length ? allAddresses : [""]).forEach(a => addAddressRow(a));
   document.getElementById("edit-biz-notes").value = editBizData.admin_notes || "";
   document.getElementById("edit-biz-closed").checked = !!editBizData.is_closed;
   document.getElementById("edit-modal").style.display = "flex";
@@ -420,6 +426,19 @@ function renderMentions(mentions) {
   });
 }
 
+function addAddressRow(value = "") {
+  const container = document.getElementById("edit-biz-addresses");
+  const row = document.createElement("div");
+  row.style.cssText = "display:flex;gap:6px;align-items:center;";
+  row.innerHTML = `
+    <input type="text" value="${esc(value)}" placeholder="e.g. 123 Main St, Vancouver, BC"
+      style="flex:1;padding:8px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
+    <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('div').remove()">✕</button>
+  `;
+  container.appendChild(row);
+  if (!value) row.querySelector("input").focus();
+}
+
 function addQuote(mentionId) {
   const container = document.getElementById(`quotes-${mentionId}`);
   const idx = container.querySelectorAll(".quote-row").length;
@@ -464,11 +483,14 @@ document.getElementById("edit-cancel").addEventListener("click", () => {
 
 document.getElementById("edit-save").addEventListener("click", async () => {
   const id = document.getElementById("edit-biz-id").value;
+  const allAddrs = Array.from(document.getElementById("edit-biz-addresses").querySelectorAll("input"))
+    .map(i => i.value.trim()).filter(Boolean);
   const payload = {
     name: document.getElementById("edit-biz-name").value.trim(),
     category: document.getElementById("edit-biz-category").value,
     review_status: document.getElementById("edit-biz-review-status").value,
-    address: document.getElementById("edit-biz-address").value.trim() || null,
+    address: allAddrs[0] || null,
+    extra_addresses: allAddrs.slice(1),
     admin_notes: document.getElementById("edit-biz-notes").value.trim() || null,
     is_closed: document.getElementById("edit-biz-closed").checked,
   };

@@ -75,7 +75,7 @@ class BusinessDetail(BaseModel):
     category: Optional[str]
     lat: Optional[float]
     lng: Optional[float]
-    address: Optional[str]
+    addresses: list[str]  # primary address + any admin-added extras
     website: Optional[str]
     is_closed: bool
     city: CitySchema
@@ -251,13 +251,22 @@ def get_business(business_id: int, response: Response, db: Session = Depends(get
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Business not found")
 
+    addresses = []
+    if business.address:
+        addresses.append(business.address)
+    if business.extra_addresses_json:
+        try:
+            addresses.extend(_json.loads(business.extra_addresses_json))
+        except (ValueError, TypeError):
+            pass
+
     result = BusinessDetail(
         id=business.id,
         name=business.name,
         category=business.category,
         lat=business.lat,
         lng=business.lng,
-        address=business.address,
+        addresses=addresses,
         website=business.website,
         is_closed=business.is_closed,
         city=CitySchema.model_validate(business.city),

@@ -73,6 +73,7 @@ class BusinessAdmin(BaseModel):
     lat: Optional[float]
     lng: Optional[float]
     address: Optional[str]
+    extra_addresses: list[str]
     website: Optional[str]
     is_closed: bool
     review_status: str
@@ -91,6 +92,7 @@ class BusinessUpdateRequest(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
     address: Optional[str] = None
+    extra_addresses: Optional[list[str]] = None
     website: Optional[str] = None
     is_closed: Optional[bool] = None
     review_status: Optional[str] = None
@@ -504,6 +506,12 @@ def get_businesses(
             for r in m.review_items
             if r.status == ReviewQueueStatus.pending
         )
+        extra = []
+        if b.extra_addresses_json:
+            try:
+                extra = json.loads(b.extra_addresses_json)
+            except (ValueError, TypeError):
+                pass
         result.append(BusinessAdmin(
             id=b.id,
             name=b.name,
@@ -511,6 +519,7 @@ def get_businesses(
             lat=b.lat,
             lng=b.lng,
             address=b.address,
+            extra_addresses=extra,
             website=b.website,
             is_closed=b.is_closed,
             review_status=b.review_status.value,
@@ -545,6 +554,8 @@ def update_business(
         business.lng = request.lng
     if request.address is not None:
         business.address = request.address
+    if request.extra_addresses is not None:
+        business.extra_addresses_json = json.dumps(request.extra_addresses) if request.extra_addresses else None
     if request.website is not None:
         business.website = request.website
     if request.is_closed is not None:

@@ -114,6 +114,8 @@ class Business(Base):
     lng: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     google_place_id: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    # Admin-added extra addresses (JSON array of strings)
+    extra_addresses_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     website: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_closed: Mapped[bool] = mapped_column(Boolean, default=False)
     review_status: Mapped[ReviewStatus] = mapped_column(
