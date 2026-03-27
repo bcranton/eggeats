@@ -23,7 +23,7 @@ PLACES_DETAILS_URL = "https://places.googleapis.com/v1/places/{place_id}"
 TEXT_SEARCH_FIELDS = "places.id,places.displayName,places.formattedAddress,places.location"
 
 # Fields to request from Place Details
-DETAILS_FIELDS = "id,displayName,formattedAddress,websiteUri,location,businessStatus,types"
+DETAILS_FIELDS = "id,displayName,formattedAddress,location,businessStatus,types"
 
 
 def search_place(
@@ -171,7 +171,6 @@ def geocode_business(
         result["lng"] = location.get("longitude")
         result["google_place_id"] = place_id
         result["address"] = details.get("formattedAddress")
-        result["website"] = details.get("websiteUri")
         result["name"] = details.get("displayName", {}).get("text", canonical_name)
 
         business_status = details.get("businessStatus", "")
