@@ -20,10 +20,10 @@ let activeFilters = {
 // Sentiment → marker colour mapping
 const SENTIMENT_COLORS = {
   positive: "#4caf50",
-  negative: "#f44336",
-  neutral: "#9e9e9e",
-  mixed:   "#ff9800",
-  null:    "#9e9e9e",
+  negative: "#d92b3a",
+  neutral:  "#7a9cc5",
+  mixed:    "#f59e0b",
+  null:     "#7a9cc5",
 };
 
 // ──────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ function renderMap(pins) {
 
     map = new mapboxgl.Map({
       container: "map",
-      style: "mapbox://styles/mapbox/dark-v11",
+      style: "mapbox://styles/mapbox/navigation-night-v1",
       center,
       zoom: defaultCity ? defaultCity.default_zoom : 12,
     });

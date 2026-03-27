@@ -3,20 +3,21 @@
    ========================================================= */
 
 :root {
-  --color-bg: #0f0f0f;
-  --color-surface: #1a1a1a;
-  --color-surface-2: #242424;
-  --color-border: #333;
-  --color-text: #e8e8e8;
-  --color-text-muted: #888;
-  --color-accent: #f5a623;
+  --color-bg: #060c1a;
+  --color-surface: #0d1b35;
+  --color-surface-2: #152241;
+  --color-border: #1e3460;
+  --color-text: #ffffff;
+  --color-text-muted: #7a9cc5;
+  --color-accent: #d92b3a;
+  --color-accent-hover: #f03344;
   --color-positive: #4caf50;
-  --color-negative: #f44336;
-  --color-neutral: #9e9e9e;
-  --color-mixed: #ff9800;
+  --color-negative: #d92b3a;
+  --color-neutral: #7a9cc5;
+  --color-mixed: #f59e0b;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --radius: 8px;
-  --shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
 }
 
 * {
@@ -238,14 +239,14 @@ select.filter-select:focus {
 }
 
 .sentiment-btn[data-sentiment="negative"].active {
-  background: rgba(244, 67, 54, 0.2);
+  background: rgba(217, 43, 58, 0.2);
   border-color: var(--color-negative);
   color: var(--color-negative);
 }
 
 .sentiment-btn[data-sentiment="neutral"].active,
 .sentiment-btn[data-sentiment="mixed"].active {
-  background: rgba(158, 158, 158, 0.2);
+  background: rgba(122, 156, 197, 0.2);
   border-color: var(--color-neutral);
   color: var(--color-text);
 }
@@ -347,15 +348,15 @@ select.filter-select:focus {
   border: 1px solid var(--color-border);
 }
 
-.badge-sentiment-positive { background: rgba(76,175,80,0.15); color: var(--color-positive); }
-.badge-sentiment-negative { background: rgba(244,67,54,0.15); color: var(--color-negative); }
+.badge-sentiment-positive { background: rgba(76,175,80,0.15);  color: var(--color-positive); }
+.badge-sentiment-negative { background: rgba(217,43,58,0.15);  color: var(--color-negative); }
 .badge-sentiment-neutral,
-.badge-sentiment-mixed    { background: rgba(158,158,158,0.15); color: var(--color-text-muted); }
+.badge-sentiment-mixed    { background: rgba(122,156,197,0.15); color: var(--color-text-muted); }
 
 .badge-closed {
-  background: rgba(244, 67, 54, 0.1);
-  color: #ff6b6b;
-  border: 1px solid rgba(244, 67, 54, 0.3);
+  background: rgba(217, 43, 58, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(217, 43, 58, 0.4);
 }
 
 .info-panel-body {
