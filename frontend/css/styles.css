@@ -430,7 +430,7 @@ select.filter-select:focus {
 
 /* ── Bottom bar ──────────────────────────────────────── */
 .bottom-bar {
-  height: 40px;
+  height: 90px;
   background: var(--color-surface);
   flex-shrink: 0;
 }
