@@ -2,6 +2,9 @@
 Fetches YouTube video transcripts via hosted transcript API.
 Uses https://github.com/jaypaun007/youtube-transcript-api to avoid
 IP-based rate limiting on the Railway server.
+
+The API returns plain text (no timestamps), so we split into word-chunk
+segments and estimate timestamps from average speaking rate.
 """
 import json
 import logging
@@ -25,20 +28,43 @@ REQUEST_DELAY_SECONDS = 13.0
 MAX_RETRIES = 4
 RETRY_BASE_DELAY_SECONDS = 30  # 30s, 60s, 120s, 240s
 
+# Plain-text splitting: ~150 wpm = 2.5 words/second; 50 words ≈ 20s per chunk
+_WORDS_PER_CHUNK = 50
+_WORDS_PER_SECOND = 2.5
+
+
+def _plain_text_to_segments(text: str) -> list[dict]:
+    """
+    Splits a plain-text transcript into word-chunk pseudo-segments with
+    estimated timestamps. Timestamps are approximated from average speaking
+    rate since the hosted API returns no timing data.
+    """
+    words = text.split()
+    segments = []
+    for i in range(0, len(words), _WORDS_PER_CHUNK):
+        chunk = " ".join(words[i:i + _WORDS_PER_CHUNK])
+        estimated_start = i / _WORDS_PER_SECOND
+        segments.append({
+            "text": chunk,
+            "start": estimated_start,
+            "duration": _WORDS_PER_CHUNK / _WORDS_PER_SECOND,
+        })
+    return segments
+
 
 def _fetch_transcript_with_retry(video_id: str) -> list[dict] | None:
     """
     Fetches transcript from the hosted API with exponential backoff on errors.
-    Returns a list of {text, start, duration} dicts, or None if unavailable.
+    Returns a list of {text, start, duration} pseudo-segments, or None if unavailable.
     """
-    url = f"https://www.youtube.com/watch?v={video_id}"
+    video_url = f"https://www.youtube.com/watch?v={video_id}"
     last_exc = None
 
     for attempt in range(MAX_RETRIES + 1):
         try:
             response = httpx.post(
                 TRANSCRIPT_API_URL,
-                json={"video_url": url},
+                json={"video_url": video_url},
                 timeout=30,
             )
 
@@ -56,28 +82,14 @@ def _fetch_transcript_with_retry(video_id: str) -> list[dict] | None:
             response.raise_for_status()
             data = response.json()
 
-            # Normalise response shape — could be a list or {"transcript": [...]}
-            if isinstance(data, list):
-                entries = data
-            elif isinstance(data, dict):
-                entries = data.get("transcript") or data.get("data") or []
-            else:
-                logger.warning(f"Unexpected transcript response shape for {video_id}: {type(data)}")
-                return None
-
-            if not entries:
+            text = data.get("transcript", "").strip() if isinstance(data, dict) else ""
+            if not text:
                 logger.warning(f"Empty transcript returned for {video_id}")
                 return None
 
-            return [
-                {
-                    "text": item.get("text", ""),
-                    "start": float(item.get("start", 0)),
-                    "duration": float(item.get("duration", 0)),
-                }
-                for item in entries
-                if item.get("text")
-            ]
+            segments = _plain_text_to_segments(text)
+            logger.info(f"Fetched transcript for {video_id}: {len(text.split())} words → {len(segments)} segments")
+            return segments
 
         except Exception as e:
             last_exc = e
