@@ -29,7 +29,7 @@ RETRY_BASE_DELAY_SECONDS = 30  # first retry after 30s, then 60s, 120s, 240s
 def _fetch_transcript_with_retry(video_id: str):
     """
     Fetches transcript with exponential backoff on 429 / transient errors.
-    Returns (transcript_list, transcript) or raises on non-retryable error.
+    Returns transcript or raises on non-retryable error.
     """
     last_exc = None
     for attempt in range(MAX_RETRIES + 1):
@@ -50,8 +50,24 @@ def _fetch_transcript_with_retry(video_id: str):
 
             return transcript
 
-        except (TranscriptsDisabled, NoTranscriptFound):
-            raise  # Non-retryable — surface immediately
+        except NoTranscriptFound:
+            raise  # Genuinely no transcript — don't retry
+        except TranscriptsDisabled as e:
+            # TranscriptsDisabled can be a misclassified bot-detection block.
+            # Retry with backoff; only treat as permanent on the final attempt.
+            last_exc = e
+            err_str = str(e)
+            if attempt < MAX_RETRIES:
+                delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
+                logger.warning(
+                    f"TranscriptsDisabled for {video_id} (may be bot-detection) "
+                    f"(attempt {attempt + 1}/{MAX_RETRIES + 1}, detail: {err_str!r}). "
+                    f"Retrying in {delay}s…"
+                )
+                time.sleep(delay)
+            else:
+                logger.warning(f"TranscriptsDisabled for {video_id} after {MAX_RETRIES + 1} attempts: {err_str!r}")
+                raise
         except Exception as e:
             last_exc = e
             err_str = str(e)
