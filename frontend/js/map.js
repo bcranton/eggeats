@@ -304,8 +304,11 @@ document.getElementById("panel-close").addEventListener("click", closePanel);
 const filterPanel   = document.getElementById("filter-panel");
 const mobileOverlay = document.getElementById("mobile-overlay");
 
-// Inject mobile-only UI elements into the filter drawer
-const isMobile = window.matchMedia("(max-width: 768px)");
+// On mobile, move filter panel to <body> so position:fixed isn't clipped
+// by app-wrapper's overflow:hidden
+if (window.matchMedia("(max-width: 768px)").matches) {
+  document.body.appendChild(filterPanel);
+}
 
 function injectMobileDrawerUI() {
   if (filterPanel.querySelector(".filter-panel-drag-handle")) return; // already injected
