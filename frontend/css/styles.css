@@ -35,40 +35,34 @@ body {
   flex-direction: column;
 }
 
-/* ── Header ──────────────────────────────────────────── */
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  background: var(--color-surface);
+/* ── Site Header (centered title) ────────────────────── */
+.site-header {
+  text-align: center;
+  padding: 20px 20px 16px;
   border-bottom: 1px solid var(--color-border);
-  z-index: 10;
   flex-shrink: 0;
+  position: relative;
+  background: var(--color-surface);
 }
 
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.header-title h1 {
-  font-size: 18px;
+.site-header h1 {
+  font-size: 32px;
   font-weight: 700;
   color: var(--color-accent);
-  letter-spacing: -0.3px;
+  letter-spacing: -0.5px;
 }
 
-.header-title span.subtitle {
-  font-size: 12px;
+.site-header .subtitle {
+  font-size: 13px;
   color: var(--color-text-muted);
-  padding: 2px 8px;
-  background: var(--color-surface-2);
-  border-radius: 20px;
+  margin-top: 4px;
 }
 
-.header-actions a {
+.admin-link {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
   font-size: 13px;
   color: var(--color-text-muted);
   text-decoration: none;
@@ -78,57 +72,112 @@ header {
   transition: color 0.2s, border-color 0.2s;
 }
 
-.header-actions a:hover {
+.admin-link:hover {
   color: var(--color-text);
   border-color: var(--color-text-muted);
 }
 
-/* ── Layout ───────────────────────────────────────────── */
-.app-body {
+/* ── App Wrapper: three-column layout ────────────────── */
+.app-wrapper {
   display: flex;
   flex: 1;
   overflow: hidden;
 }
 
-/* ── Filter Sidebar ───────────────────────────────────── */
-.sidebar {
-  width: 280px;
+/* ── Left: Filter Panel ──────────────────────────────── */
+.filter-panel {
+  width: 200px;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
+  padding: 16px;
   display: flex;
   flex-direction: column;
+  gap: 16px;
   overflow-y: auto;
   flex-shrink: 0;
 }
 
-.sidebar-section {
+/* ── Right: Stats Panel ──────────────────────────────── */
+.stats-panel {
+  width: 160px;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
   padding: 16px;
-  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex-shrink: 0;
 }
 
-.sidebar-section h3 {
+.panel-heading {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--color-text-muted);
-  margin-bottom: 12px;
 }
 
+/* ── Center: City bar + Map ──────────────────────────── */
+.map-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.city-bar {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.city-select {
+  padding: 7px 32px 7px 12px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  min-width: 200px;
+}
+
+.city-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+#map {
+  flex: 1;
+}
+
+/* ── Filters ─────────────────────────────────────────── */
 .filter-group {
-  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .filter-group label {
-  display: block;
-  font-size: 13px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
   color: var(--color-text-muted);
-  margin-bottom: 6px;
 }
 
 select.filter-select {
   width: 100%;
-  padding: 8px 10px;
+  padding: 7px 10px;
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -146,22 +195,35 @@ select.filter-select:focus {
   border-color: var(--color-accent);
 }
 
+.checkbox-label {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  color: var(--color-text-muted) !important;
+  cursor: pointer;
+}
+
 /* Sentiment buttons */
 .sentiment-buttons {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .sentiment-btn {
-  padding: 5px 12px;
-  border-radius: 20px;
+  padding: 5px 10px;
+  border-radius: var(--radius);
   font-size: 12px;
   border: 1px solid var(--color-border);
   background: var(--color-surface-2);
   color: var(--color-text-muted);
   cursor: pointer;
   transition: all 0.15s;
+  text-align: left;
 }
 
 .sentiment-btn:hover,
@@ -188,22 +250,16 @@ select.filter-select:focus {
   color: var(--color-text);
 }
 
-/* Stats */
-.stats-row {
-  display: flex;
-  gap: 10px;
-}
-
+/* ── Stats ───────────────────────────────────────────── */
 .stat-box {
-  flex: 1;
   background: var(--color-surface-2);
   border-radius: var(--radius);
-  padding: 10px;
+  padding: 12px 10px;
   text-align: center;
 }
 
 .stat-box .num {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 700;
   color: var(--color-accent);
 }
@@ -214,23 +270,22 @@ select.filter-select:focus {
   margin-top: 2px;
 }
 
-/* ── Map ─────────────────────────────────────────────── */
-#map {
-  flex: 1;
-  height: 100%;
-}
-
-/* ── Info Panel (Business Detail) ─────────────────────── */
+/* ── Business Info Panel (overlays the map) ──────────── */
 .info-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
   width: 360px;
+  height: 100vh;
   background: var(--color-surface);
   border-left: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  flex-shrink: 0;
+  z-index: 100;
   transform: translateX(100%);
   transition: transform 0.25s ease;
+  box-shadow: var(--shadow);
 }
 
 .info-panel.open {
@@ -252,7 +307,7 @@ select.filter-select:focus {
   line-height: 1.3;
 }
 
-.info-panel-header .close-btn {
+.close-btn {
   background: none;
   border: none;
   color: var(--color-text-muted);
@@ -263,7 +318,7 @@ select.filter-select:focus {
   border-radius: 4px;
 }
 
-.info-panel-header .close-btn:hover {
+.close-btn:hover {
   background: var(--color-surface-2);
   color: var(--color-text);
 }
@@ -292,21 +347,10 @@ select.filter-select:focus {
   border: 1px solid var(--color-border);
 }
 
-.badge-sentiment-positive {
-  background: rgba(76, 175, 80, 0.15);
-  color: var(--color-positive);
-}
-
-.badge-sentiment-negative {
-  background: rgba(244, 67, 54, 0.15);
-  color: var(--color-negative);
-}
-
+.badge-sentiment-positive { background: rgba(76,175,80,0.15); color: var(--color-positive); }
+.badge-sentiment-negative { background: rgba(244,67,54,0.15); color: var(--color-negative); }
 .badge-sentiment-neutral,
-.badge-sentiment-mixed {
-  background: rgba(158, 158, 158, 0.15);
-  color: var(--color-text-muted);
-}
+.badge-sentiment-mixed    { background: rgba(158,158,158,0.15); color: var(--color-text-muted); }
 
 .badge-closed {
   background: rgba(244, 67, 54, 0.1);
@@ -405,16 +449,15 @@ select.filter-select:focus {
 
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 768px) {
-  .sidebar {
+  .filter-panel,
+  .stats-panel {
     display: none;
   }
 
   .info-panel {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
     width: 100%;
+    top: auto;
+    bottom: 0;
     height: 60vh;
     border-left: none;
     border-top: 1px solid var(--color-border);
