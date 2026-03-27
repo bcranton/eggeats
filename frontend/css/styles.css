@@ -540,11 +540,13 @@ select.filter-select:focus {
   }
 
   .site-header h1 {
-    font-size: 26px;
+    font-size: 24px;
   }
 
   .site-header .subtitle {
-    display: none;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    margin-top: 4px;
   }
 
   /* City bar: row with city select + filter button */
