@@ -186,6 +186,26 @@ thead th {
   padding: 10px 14px;
   text-align: left;
   border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+thead th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+thead th.sortable:hover {
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+thead th.sort-active {
+  color: var(--color-accent);
+}
+
+.sort-icon {
+  font-style: normal;
+  font-size: 10px;
 }
 
 tbody tr { border-bottom: 1px solid var(--color-border); }

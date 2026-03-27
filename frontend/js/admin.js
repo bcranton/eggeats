@@ -188,50 +188,97 @@ document.getElementById("review-status-filter").addEventListener("change", loadR
 // Videos
 // ──────────────────────────────────────────────────────────
 
+let videosData = [];
+let videoSort = { col: "published_at", dir: "desc" };
+
 async function loadVideos() {
   const tbody = document.getElementById("videos-table-body");
   tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><span class="spinner"></span> Loading…</td></tr>`;
-
   try {
-    const videos = await apiFetch("/api/admin/videos");
-    if (!videos.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No videos found.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = "";
-    videos.forEach(v => {
-      const tr = document.createElement("tr");
-      const publishedDate = v.published_at
-        ? new Date(v.published_at).toLocaleDateString()
-        : "–";
-      const errorHtml = v.error_message
-        ? `<span class="error-badge" data-error="${esc(v.error_message)}">⚠ Error<div class="error-tooltip">${esc(v.error_message)}</div></span>`
-        : "–";
-
-      tr.innerHTML = `
-        <td>
-          <a href="https://youtube.com/watch?v=${v.youtube_video_id}" target="_blank"
-             style="color:var(--color-accent);text-decoration:none;font-size:13px;" class="truncate" title="${esc(v.title)}">
-            ${esc(v.title.length > 55 ? v.title.slice(0, 55) + "…" : v.title)}
-          </a>
-        </td>
-        <td style="white-space:nowrap;">${publishedDate}</td>
-        <td><span class="chip chip-${v.processing_status}">${v.processing_status}</span></td>
-        <td>${v.mention_count}</td>
-        <td>${errorHtml}</td>
-        <td style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-secondary btn-sm" onclick="reprocessVideo(${v.id}, this)">↻ Reprocess</button>
-          ${v.mention_count > 0 ? `<button class="btn btn-danger btn-sm" onclick="clearExtractions(${v.id}, this)">✕ Clear</button>` : ""}
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
+    videosData = await apiFetch("/api/admin/videos");
+    renderVideos();
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="color:var(--color-negative);">Error loading videos.</td></tr>`;
     console.error(e);
   }
 }
+
+function renderVideos() {
+  const tbody = document.getElementById("videos-table-body");
+
+  // Update sort icons
+  document.querySelectorAll("#tab-videos th.sortable").forEach(th => {
+    const icon = th.querySelector(".sort-icon");
+    if (th.dataset.col === videoSort.col) {
+      icon.textContent = videoSort.dir === "asc" ? " ▲" : " ▼";
+      th.classList.add("sort-active");
+    } else {
+      icon.textContent = "";
+      th.classList.remove("sort-active");
+    }
+  });
+
+  if (!videosData.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No videos found.</td></tr>`;
+    return;
+  }
+
+  // Sort
+  const sorted = [...videosData].sort((a, b) => {
+    let av = a[videoSort.col], bv = b[videoSort.col];
+    // Nulls always last
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (typeof av === "string") av = av.toLowerCase();
+    if (typeof bv === "string") bv = bv.toLowerCase();
+    const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+    return videoSort.dir === "asc" ? cmp : -cmp;
+  });
+
+  tbody.innerHTML = "";
+  sorted.forEach(v => {
+    const tr = document.createElement("tr");
+    const publishedDate = v.published_at
+      ? new Date(v.published_at).toLocaleDateString()
+      : "–";
+    const errorHtml = v.error_message
+      ? `<span class="error-badge" data-error="${esc(v.error_message)}">⚠ Error<div class="error-tooltip">${esc(v.error_message)}</div></span>`
+      : "–";
+
+    tr.innerHTML = `
+      <td>
+        <a href="https://youtube.com/watch?v=${v.youtube_video_id}" target="_blank"
+           style="color:var(--color-accent);text-decoration:none;font-size:13px;" class="truncate" title="${esc(v.title)}">
+          ${esc(v.title.length > 55 ? v.title.slice(0, 55) + "…" : v.title)}
+        </a>
+      </td>
+      <td style="white-space:nowrap;">${publishedDate}</td>
+      <td><span class="chip chip-${v.processing_status}">${v.processing_status}</span></td>
+      <td>${v.mention_count}</td>
+      <td>${errorHtml}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="reprocessVideo(${v.id}, this)">↻ Reprocess</button>
+        ${v.mention_count > 0 ? `<button class="btn btn-danger btn-sm" onclick="clearExtractions(${v.id}, this)">✕ Clear</button>` : ""}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Sortable column header clicks
+document.querySelectorAll("#tab-videos th.sortable").forEach(th => {
+  th.addEventListener("click", () => {
+    const col = th.dataset.col;
+    if (videoSort.col === col) {
+      videoSort.dir = videoSort.dir === "asc" ? "desc" : "asc";
+    } else {
+      videoSort.col = col;
+      videoSort.dir = col === "published_at" ? "desc" : "asc";
+    }
+    renderVideos();
+  });
+});
 
 async function reprocessVideo(videoId, btn) {
   btn.disabled = true;
