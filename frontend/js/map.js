@@ -44,87 +44,59 @@ async function bootstrap() {
 }
 
 // ──────────────────────────────────────────────────────────
-// No-location panel (chains / unlocated businesses)
+// Unlocated strip (city businesses with no coordinates)
 // ──────────────────────────────────────────────────────────
 
-let noLocationData = null;
+let noLocationData = [];
 
 async function loadNoLocationData() {
   const params = new URLSearchParams();
   if (activeFilters.city) params.set("city_id", activeFilters.city);
-  const data = await fetch(`${API}/api/no-location?${params}`).then(r => r.json());
-  noLocationData = data;
+  noLocationData = await fetch(`${API}/api/no-location?${params}`).then(r => r.json());
+  renderUnlocatedStrip();
+}
 
-  const count = data.length;
+function renderUnlocatedStrip() {
+  const strip = document.getElementById("unlocated-strip");
+  const body  = document.getElementById("unlocated-strip-body");
+
+  let items = noLocationData;
+  if (!activeFilters.showClosed) items = items.filter(b => !b.is_closed);
+
   const statBlock = document.getElementById("no-location-stat");
-  const mobileBtn = document.getElementById("mobile-noloc-btn");
-  if (count > 0) {
-    document.getElementById("stat-no-location").textContent = count;
+  if (items.length > 0) {
+    document.getElementById("stat-no-location").textContent = items.length;
     statBlock.style.display = "";
-    if (window.matchMedia("(max-width: 768px)").matches) {
-      mobileBtn.style.display = "flex";
-    }
   } else {
     statBlock.style.display = "none";
-    mobileBtn.style.display = "none";
   }
-}
 
-function openNoLocationPanel() {
-  if (!noLocationData) return;
-  renderNoLocationPanel(noLocationData);
-  document.getElementById("no-location-panel").classList.add("open");
-  document.getElementById("mobile-overlay").classList.add("active");
-  requestAnimationFrame(() => document.getElementById("mobile-overlay").classList.add("visible"));
-}
-
-function closeNoLocationPanel() {
-  document.getElementById("no-location-panel").classList.remove("open");
-  const overlay = document.getElementById("mobile-overlay");
-  overlay.classList.remove("visible");
-  overlay.addEventListener("transitionend", () => overlay.classList.remove("active"), { once: true });
-}
-
-function renderNoLocationPanel(businesses) {
-  const body = document.getElementById("no-location-body");
-  if (!businesses.length) {
-    body.innerHTML = `<p style="color:var(--color-text-muted);padding:20px 16px;font-size:13px;">No unlocated businesses found for this city.</p>`;
+  if (!items.length) {
+    strip.style.display = "none";
     return;
   }
 
+  strip.style.display = "";
+  document.getElementById("unlocated-strip-count").textContent =
+    `${items.length} place${items.length !== 1 ? "s" : ""} — click for details`;
+
   body.innerHTML = "";
-  businesses.forEach(biz => {
+  items.forEach(biz => {
+    const color = SENTIMENT_COLORS[biz.sentiment_summary] || SENTIMENT_COLORS.null;
     const card = document.createElement("div");
-    card.className = "no-location-card";
+    card.className = "unlocated-card";
+    card.onclick = () => openBusinessPanel(biz.id);
 
-    const sentimentColor = SENTIMENT_COLORS[biz.sentiment_summary] || SENTIMENT_COLORS.null;
-    const sentimentLabel = biz.sentiment_summary ? capitalise(biz.sentiment_summary) : null;
-
-    const badgesHtml = [
+    const badges = [
       biz.category ? `<span class="badge badge-category">${escapeHtml(biz.category)}</span>` : "",
-      sentimentLabel ? `<span class="badge badge-sentiment-${biz.sentiment_summary}">${sentimentEmoji(biz.sentiment_summary)} ${sentimentLabel}</span>` : "",
+      biz.sentiment_summary ? `<span class="badge badge-sentiment-${biz.sentiment_summary}">${sentimentEmoji(biz.sentiment_summary)} ${capitalise(biz.sentiment_summary)}</span>` : "",
       biz.is_closed ? `<span class="badge badge-closed">Closed</span>` : "",
     ].filter(Boolean).join("");
 
-    const mentionsHtml = (biz.mentions || []).map(mention => {
-      const quotesHtml = (mention.quotes || [])
-        .map(q => `<div class="quote">"${escapeHtml(q)}"</div>`)
-        .join("");
-      const timeLabel = mention.timestamp_seconds ? ` (${formatTime(mention.timestamp_seconds)})` : "";
-      return `
-        <div class="mention-card" style="margin-top:10px; padding-top:10px;">
-          <div class="video-title">${escapeHtml(mention.video_title)}</div>
-          ${quotesHtml || `<div class="quote" style="opacity:0.5">No quotes extracted.</div>`}
-          <a class="watch-link" href="${mention.youtube_url}" target="_blank" rel="noopener">▶ Watch on YouTube${timeLabel}</a>
-        </div>`;
-    }).join("");
-
     card.innerHTML = `
-      <div class="no-location-card-header">
-        <div class="no-location-card-name">${escapeHtml(biz.name)}</div>
-      </div>
-      <div class="no-location-card-badges">${badgesHtml}</div>
-      ${mentionsHtml}
+      <div class="unlocated-card-dot" style="background:${color};"></div>
+      <div class="unlocated-card-name">${escapeHtml(biz.name)}</div>
+      ${badges ? `<div class="unlocated-card-badges">${badges}</div>` : ""}
     `;
     body.appendChild(card);
   });
@@ -458,7 +430,6 @@ function closePanel() {
 
 document.getElementById("filter-city").addEventListener("change", e => {
   activeFilters.city = e.target.value;
-  closeNoLocationPanel();
   const city = citiesById[activeFilters.city];
   if (city && city.is_virtual) {
     loadListView();
@@ -499,7 +470,7 @@ document.querySelectorAll(".sentiment-btn").forEach(btn => {
 
 document.getElementById("filter-show-closed").addEventListener("change", e => {
   activeFilters.showClosed = e.target.checked;
-  if (isListViewActive()) { renderListView(); } else { renderMap(allPins); }
+  if (isListViewActive()) { renderListView(); } else { renderMap(allPins); renderUnlocatedStrip(); }
 });
 
 function isListViewActive() {
@@ -507,9 +478,6 @@ function isListViewActive() {
 }
 
 document.getElementById("panel-close").addEventListener("click", closePanel);
-document.getElementById("no-location-open-btn").addEventListener("click", openNoLocationPanel);
-document.getElementById("mobile-noloc-btn").addEventListener("click", openNoLocationPanel);
-document.getElementById("no-location-close").addEventListener("click", closeNoLocationPanel);
 
 // ──────────────────────────────────────────────────────────
 // Mobile filter drawer
@@ -556,7 +524,6 @@ function closeFilterDrawer() {
 document.getElementById("mobile-filter-btn").addEventListener("click", openFilterDrawer);
 mobileOverlay.addEventListener("click", () => {
   closeFilterDrawer();
-  closeNoLocationPanel();
 });
 
 // ──────────────────────────────────────────────────────────
