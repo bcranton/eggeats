@@ -1,5 +1,5 @@
 """
-Geocodes businesses using Google Places API.
+Geocodes businesses using Google Places API (New).
 Resolves business names and gets lat/lng coordinates.
 """
 import logging
@@ -14,10 +14,16 @@ logger = logging.getLogger(__name__)
 
 # Confidence threshold — below this we flag for admin review
 GEOCODE_CONFIDENCE_THRESHOLD = 0.7
-REQUEST_DELAY_SECONDS = 0.3  # respect 1 QPS limit
+REQUEST_DELAY_SECONDS = 0.3  # respect rate limits
 
-PLACES_TEXT_SEARCH_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
-PLACES_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
+PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
+PLACES_DETAILS_URL = "https://places.googleapis.com/v1/places/{place_id}"
+
+# Fields to request from Text Search
+TEXT_SEARCH_FIELDS = "places.id,places.displayName,places.formattedAddress,places.location"
+
+# Fields to request from Place Details
+DETAILS_FIELDS = "id,displayName,formattedAddress,websiteUri,location,businessStatus,types"
 
 
 def search_place(
@@ -26,31 +32,34 @@ def search_place(
     country: str,
 ) -> dict[str, Any] | None:
     """
-    Searches Google Places Text Search for a business.
-    Returns place result dict or None.
+    Searches Google Places (New) Text Search for a business.
+    Returns the first place result dict or None.
     """
     settings = get_settings()
     query = f"{business_name} {city_name} {country}"
 
-    params = {
-        "query": query,
-        "key": settings.google_places_api_key,
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": settings.google_places_api_key,
+        "X-Goog-FieldMask": TEXT_SEARCH_FIELDS,
     }
+    body = {"textQuery": query}
 
     try:
-        response = httpx.get(PLACES_TEXT_SEARCH_URL, params=params, timeout=10)
+        response = httpx.post(PLACES_TEXT_SEARCH_URL, json=body, headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
 
-        if data.get("status") == "OK" and data.get("results"):
-            return data["results"][0]
-        elif data.get("status") == "ZERO_RESULTS":
-            logger.info(f"No Places results for: {query}")
-            return None
-        else:
-            logger.warning(f"Places API status: {data.get('status')} for query: {query}")
-            return None
+        places = data.get("places", [])
+        if places:
+            return places[0]
 
+        logger.info(f"No Places results for: {query}")
+        return None
+
+    except httpx.HTTPStatusError as e:
+        logger.warning(f"Places Text Search HTTP {e.response.status_code} for '{query}': {e.response.text}")
+        return None
     except Exception as e:
         logger.error(f"Places Text Search error for '{business_name}': {e}")
         return None
@@ -60,27 +69,25 @@ def search_place(
 
 def get_place_details(place_id: str) -> dict[str, Any] | None:
     """
-    Fetches detailed info for a place by place_id.
+    Fetches detailed info for a place by place_id (New API format).
     Returns place details dict or None.
     """
     settings = get_settings()
-    params = {
-        "place_id": place_id,
-        "fields": "name,formatted_address,website,geometry,business_status,types",
-        "key": settings.google_places_api_key,
+    url = PLACES_DETAILS_URL.format(place_id=place_id)
+
+    headers = {
+        "X-Goog-Api-Key": settings.google_places_api_key,
+        "X-Goog-FieldMask": DETAILS_FIELDS,
     }
 
     try:
-        response = httpx.get(PLACES_DETAILS_URL, params=params, timeout=10)
+        response = httpx.get(url, headers=headers, timeout=10)
         response.raise_for_status()
-        data = response.json()
+        return response.json()
 
-        if data.get("status") == "OK":
-            return data.get("result")
-        else:
-            logger.warning(f"Place Details API status: {data.get('status')} for {place_id}")
-            return None
-
+    except httpx.HTTPStatusError as e:
+        logger.warning(f"Place Details HTTP {e.response.status_code} for {place_id}: {e.response.text}")
+        return None
     except Exception as e:
         logger.error(f"Place Details error for {place_id}: {e}")
         return None
@@ -111,7 +118,7 @@ def geocode_business(
     llm_confidence: float = 1.0,
 ) -> dict[str, Any]:
     """
-    Geocodes a business using Google Places.
+    Geocodes a business using Google Places (New).
     Returns dict with geocoding results and a needs_review flag.
 
     Return structure:
@@ -147,40 +154,38 @@ def geocode_business(
         logger.info(f"No geocode result for '{canonical_name}' — flagging for review")
         return result
 
-    place_id = place.get("place_id")
+    # New API: place_id is under "id", display name under "displayName.text"
+    place_id = place.get("id")
     if not place_id:
         result["needs_review"] = True
         return result
 
-    # Check name similarity between our name and Places result
-    places_name = place.get("name", "")
+    places_name = place.get("displayName", {}).get("text", "")
     similarity = name_similarity(canonical_name, places_name)
 
     # Fetch full details
     details = get_place_details(place_id)
     if details:
-        geometry = details.get("geometry", {}).get("location", {})
-        result["lat"] = geometry.get("lat")
-        result["lng"] = geometry.get("lng")
+        location = details.get("location", {})
+        result["lat"] = location.get("latitude")
+        result["lng"] = location.get("longitude")
         result["google_place_id"] = place_id
-        result["address"] = details.get("formatted_address")
-        result["website"] = details.get("website")
-        result["name"] = details.get("name", canonical_name)
+        result["address"] = details.get("formattedAddress")
+        result["website"] = details.get("websiteUri")
+        result["name"] = details.get("displayName", {}).get("text", canonical_name)
 
-        # Determine if closed
-        business_status = details.get("business_status", "")
+        business_status = details.get("businessStatus", "")
         result["is_closed"] = business_status in ("CLOSED_PERMANENTLY", "CLOSED_TEMPORARILY")
 
-        # Map Google types to our categories
         types = details.get("types", [])
         result["category"] = _map_types_to_category(types)
     else:
         # Fall back to text search result
-        geometry = place.get("geometry", {}).get("location", {})
-        result["lat"] = geometry.get("lat")
-        result["lng"] = geometry.get("lng")
+        location = place.get("location", {})
+        result["lat"] = location.get("latitude")
+        result["lng"] = location.get("longitude")
         result["google_place_id"] = place_id
-        result["address"] = place.get("formatted_address")
+        result["address"] = place.get("formattedAddress")
         result["name"] = places_name or canonical_name
 
     # Overall confidence: combine LLM confidence and name similarity
