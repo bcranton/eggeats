@@ -1,111 +1,67 @@
 """
-Fetches YouTube video transcripts via hosted transcript API.
-Uses https://github.com/jaypaun007/youtube-transcript-api to avoid
-IP-based rate limiting on the Railway server.
-
-The API returns plain text (no timestamps), so we split into word-chunk
-segments and estimate timestamps from average speaking rate.
+Fetches YouTube video transcripts using youtube-transcript-api.
+Prefers manually-created transcripts; falls back to auto-generated.
 """
 import json
 import logging
 import time
 from datetime import datetime, timezone
 
-import httpx
+from youtube_transcript_api import (
+    YouTubeTranscriptApi,
+    NoTranscriptFound,
+    TranscriptsDisabled,
+)
 from sqlalchemy.orm import Session
 
 from app.models import Video, ProcessingStatus
 
 logger = logging.getLogger(__name__)
 
-TRANSCRIPT_API_URL = "https://youtube-transcript-api-tau-one.vercel.app/transcript"
+# Delay between successful API calls to avoid rate limiting
+REQUEST_DELAY_SECONDS = 2.0
 
-# 5 requests/minute limit on the hosted API → minimum 12s between requests.
-# Using 13s for a small safety buffer.
-REQUEST_DELAY_SECONDS = 13.0
-
-# Retry settings for transient errors (429, 5xx, timeouts)
+# Retry settings for 429 / transient errors
 MAX_RETRIES = 4
-RETRY_BASE_DELAY_SECONDS = 30  # 30s, 60s, 120s, 240s
-
-# Plain-text splitting: ~150 wpm = 2.5 words/second; 50 words ≈ 20s per chunk
-_WORDS_PER_CHUNK = 50
-_WORDS_PER_SECOND = 2.5
+RETRY_BASE_DELAY_SECONDS = 30  # first retry after 30s, then 60s, 120s, 240s
 
 
-def _plain_text_to_segments(text: str) -> list[dict]:
+def _fetch_transcript_with_retry(video_id: str):
     """
-    Splits a plain-text transcript into word-chunk pseudo-segments with
-    estimated timestamps. Timestamps are approximated from average speaking
-    rate since the hosted API returns no timing data.
+    Fetches transcript with exponential backoff on 429 / transient errors.
+    Returns transcript or raises on non-retryable error.
     """
-    words = text.split()
-    segments = []
-    for i in range(0, len(words), _WORDS_PER_CHUNK):
-        chunk = " ".join(words[i:i + _WORDS_PER_CHUNK])
-        estimated_start = i / _WORDS_PER_SECOND
-        segments.append({
-            "text": chunk,
-            "start": estimated_start,
-            "duration": _WORDS_PER_CHUNK / _WORDS_PER_SECOND,
-        })
-    return segments
-
-
-def _fetch_transcript_with_retry(video_id: str) -> list[dict] | None:
-    """
-    Fetches transcript from the hosted API with exponential backoff on errors.
-    Returns a list of {text, start, duration} pseudo-segments, or None if unavailable.
-    """
-    video_url = f"https://www.youtube.com/watch?v={video_id}"
     last_exc = None
-
     for attempt in range(MAX_RETRIES + 1):
         try:
-            response = httpx.post(
-                TRANSCRIPT_API_URL,
-                json={"url": video_url},
-                timeout=30,
-            )
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
 
-            if response.status_code == 404:
-                logger.warning(f"No transcript available for {video_id} (404)")
-                return None
+            transcript = None
+            try:
+                transcript = transcript_list.find_manually_created_transcript(["en", "en-US", "en-GB"])
+            except NoTranscriptFound:
+                try:
+                    transcript = transcript_list.find_generated_transcript(["en", "en-US", "en-GB"])
+                except NoTranscriptFound:
+                    # Try any available transcript
+                    for t in transcript_list:
+                        transcript = t
+                        break
 
-            if response.status_code == 429 or response.status_code >= 500:
-                raise httpx.HTTPStatusError(
-                    f"HTTP {response.status_code}",
-                    request=response.request,
-                    response=response,
-                )
+            return transcript
 
-            response.raise_for_status()
-            data = response.json()
-
-            text = data.get("transcript", "").strip() if isinstance(data, dict) else ""
-            if not text:
-                logger.warning(f"Empty transcript returned for {video_id}")
-                return None
-
-            # Detect garbled responses (YouTube internal metadata, not real text).
-            # Real transcripts have mostly alphabetic words; garbled ones are full of
-            # JSON-like symbols e.g. '0:{"a":"$@1","f":"","b":"i-dEv7N7_G2B1apWtEAsb"}'
-            alpha_chars = sum(c.isalpha() for c in text)
-            if len(text) < 100 or alpha_chars / len(text) < 0.5:
-                logger.warning(f"Garbled transcript response for {video_id} (alpha ratio={alpha_chars/len(text):.2f}): {text[:120]!r}")
-                return None
-
-            segments = _plain_text_to_segments(text)
-            logger.info(f"Fetched transcript for {video_id}: {len(text.split())} words → {len(segments)} segments")
-            return segments
-
+        except (NoTranscriptFound, TranscriptsDisabled):
+            raise  # Genuinely no transcript — don't retry
         except Exception as e:
             last_exc = e
-            if attempt < MAX_RETRIES:
+            err_str = str(e)
+            is_rate_limit = "429" in err_str or "Too Many Requests" in err_str or "sorry" in err_str.lower()
+
+            if attempt < MAX_RETRIES and is_rate_limit:
                 delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
                 logger.warning(
-                    f"Transcript fetch failed for {video_id} "
-                    f"(attempt {attempt + 1}/{MAX_RETRIES + 1}): {e}. "
+                    f"Rate limited fetching transcript for {video_id} "
+                    f"(attempt {attempt + 1}/{MAX_RETRIES + 1}). "
                     f"Retrying in {delay}s…"
                 )
                 time.sleep(delay)
@@ -121,10 +77,16 @@ def fetch_transcript(video: Video, db: Session) -> list[dict] | None:
     Returns parsed transcript (list of {text, start, duration}) or None.
     """
     try:
-        parsed = _fetch_transcript_with_retry(video.youtube_video_id)
+        transcript = _fetch_transcript_with_retry(video.youtube_video_id)
 
-        if parsed is None:
+        if transcript is None:
+            logger.warning(f"No transcript found for {video.youtube_video_id}")
             return None
+
+        data = transcript.fetch()
+        # Convert FetchedTranscript to plain list of dicts
+        parsed = [{"text": item["text"], "start": item["start"], "duration": item["duration"]}
+                  for item in data]
 
         video.transcript_raw = json.dumps(parsed)
         video.transcript_fetched_at = datetime.now(timezone.utc)
@@ -133,6 +95,9 @@ def fetch_transcript(video: Video, db: Session) -> list[dict] | None:
         time.sleep(REQUEST_DELAY_SECONDS)
         return parsed
 
+    except TranscriptsDisabled:
+        logger.warning(f"Transcripts disabled for {video.youtube_video_id}")
+        return None
     except Exception as e:
         logger.error(f"Error fetching transcript for {video.youtube_video_id}: {e}")
         return None
