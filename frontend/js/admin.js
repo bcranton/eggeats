@@ -280,7 +280,9 @@ async function loadBusinesses() {
     }
 
     tbody.innerHTML = "";
+    bizDataMap.clear();
     businesses.forEach(b => {
+      bizDataMap.set(b.id, b);
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><strong>${esc(b.name)}</strong>${b.pending_review_count > 0 ? ` <span class="chip chip-pending_review">${b.pending_review_count} review</span>` : ""}</td>
@@ -290,7 +292,7 @@ async function loadBusinesses() {
         <td>${b.mention_count}</td>
         <td>${b.is_closed ? "🔒 Closed" : "–"}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-secondary btn-sm" onclick="openEditModal(${b.id}, ${JSON.stringify(JSON.stringify(b))})">Edit</button>
+          <button class="btn btn-secondary btn-sm" onclick="openEditModal(${b.id})">Edit</button>
           ${b.review_status !== "approved" ? `<button class="btn btn-success btn-sm" onclick="quickApprove(${b.id})">✓ Approve</button>` : ""}
         </td>
       `;
@@ -320,9 +322,11 @@ document.getElementById("biz-status-filter").addEventListener("change", loadBusi
 
 // Edit modal
 let editBizData = null;
+const bizDataMap = new Map(); // keyed by business id — avoids embedding JSON in onclick attrs
 
-function openEditModal(id, bizJson) {
-  editBizData = JSON.parse(bizJson);
+function openEditModal(id) {
+  editBizData = bizDataMap.get(id);
+  if (!editBizData) return;
   document.getElementById("edit-biz-id").value = id;
   document.getElementById("edit-biz-name").value = editBizData.name || "";
   document.getElementById("edit-biz-category").value = editBizData.category || "other";
