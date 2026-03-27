@@ -13,7 +13,7 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-EXTRACTION_PROMPT = """You are analyzing a YouTube video transcript from Northernlion, a content creator who lives in Vancouver, BC, Canada. He frequently mentions local businesses, restaurants, cafes, bars, attractions, and other places.
+EXTRACTION_PROMPT = """You are analyzing a YouTube video transcript from Northernlion, a content creator based in Vancouver, BC, Canada who also travels to other cities. He frequently mentions local businesses, restaurants, cafes, bars, attractions, and other places.
 
 Transcript segment with timestamps (format: [Ns] text):
 <transcript>
@@ -24,7 +24,7 @@ Video title: "{video_title}"
 Published: {published_date}
 City context: {city_name}, {country}
 
-Your task: Extract every mention of a local business, restaurant, cafe, bar, attraction, shop, or place. Focus on named businesses/places only (not generic mentions like "a restaurant" or "the mall").
+Your task: Extract every mention of a local business, restaurant, cafe, bar, attraction, shop, or place in or near {city_name}. Focus on named businesses/places only (not generic mentions like "a restaurant" or "the mall").
 
 For each mention, return a JSON object with these fields:
 - "raw_name": the name exactly as spoken/written in the transcript (may have typos/errors)
@@ -41,8 +41,8 @@ For each mention, return a JSON object with these fields:
 
 Rules:
 - Include closed/defunct businesses (NL's opinion is still historically valuable)
-- transcript auto-captions often have errors — use context to determine the real business name
-- Common Vancouver businesses: La Glace (candy shop), Tacofino, Burdock & Co, Odd Society Spirits, etc.
+- Transcript auto-captions often have errors — use context to determine the real business name
+- Common Vancouver/Metro Vancouver businesses: La Glace (candy shop), Tacofino, Burdock & Co, Odd Society Spirits, etc. Burnaby and surrounding suburbs (Richmond, Surrey, North Vancouver, etc.) are part of the Metro Vancouver area.
 - Only include places NL actually talks about with some specificity — not passing one-word mentions with no context
 - If a business is mentioned multiple times in the segment, only include it once (use the richest context)
 - Do NOT invent sentiment — if NL doesn't express an opinion, use "neutral"
