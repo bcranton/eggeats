@@ -45,6 +45,7 @@ Rules:
   * Passing comparisons ("it was bigger than a Subway sandwich")
   * Generic mentions with no opinion ("I walked past a Tim Hortons")
   * Businesses NL mentions only to contrast with another place he's reviewing
+- CITY VERIFICATION: Only include businesses that the transcript clearly places in {city_name}. If the transcript mentions a business is in a different city (e.g. the context says Toronto but NL says "this place in Vancouver"), do not include it — return [] instead. The city context is a hint, not ground truth.
 - Include closed/defunct businesses (NL's opinion is still historically valuable)
 - Transcript auto-captions often have errors — use context to determine the real business name
 - Common Vancouver/Metro Vancouver businesses: La Glace (candy shop), Tacofino, Burdock & Co, Odd Society Spirits, etc. Burnaby and surrounding suburbs (Richmond, Surrey, North Vancouver, etc.) are part of the Metro Vancouver area.
