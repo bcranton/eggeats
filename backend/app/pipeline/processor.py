@@ -131,9 +131,76 @@ def _create_review_item(db: Session, mention: Mention, reason: str) -> None:
 # Single video processor
 # ---------------------------------------------------------------------------
 
-def process_video(db: Session, video: Video, city: City) -> bool:
+def _process_video_for_city(
+    db: Session,
+    video: Video,
+    city: City,
+    transcript: list[dict],
+) -> int:
     """
-    Processes a single video through the full pipeline.
+    Runs LLM extraction + geocoding for one city against an already-fetched transcript.
+    Returns the number of businesses extracted (0 if no keyword matches).
+    """
+    keywords = city.keyword_list
+    windows = find_keyword_windows(transcript, keywords, window_seconds=180)
+    if not windows:
+        return 0
+
+    logger.info(f"  [{city.name}] {len(windows)} keyword window(s) in {video.youtube_video_id}")
+
+    published_date = video.published_at.strftime("%Y-%m-%d") if video.published_at else "unknown"
+    extractions = extract_businesses_from_video(
+        transcript=transcript,
+        keyword_windows=windows,
+        video_title=video.title,
+        published_date=published_date,
+        city_name=city.name,
+        country=city.country,
+    )
+    logger.info(f"  [{city.name}] LLM extracted {len(extractions)} business(es)")
+
+    for extraction in extractions:
+        canonical_name = extraction.get("canonical_name", "").strip()
+        if not canonical_name:
+            continue
+
+        geocode_result = geocode_business(
+            canonical_name=canonical_name,
+            city_name=city.name,
+            country=city.country,
+            llm_confidence=extraction.get("confidence", 0.5),
+        )
+
+        if extraction.get("is_closed") and not geocode_result.get("is_closed"):
+            geocode_result["is_closed"] = True
+
+        business, created = _get_or_create_business(db, geocode_result, city)
+        if created:
+            logger.info(f"  [{city.name}] Created new business: {business.name}")
+
+        if extraction.get("is_closed") and not business.is_closed:
+            business.is_closed = True
+
+        mention = _create_mention(db, business, video, extraction, geocode_result)
+
+        if mention.needs_review:
+            reasons = []
+            if extraction.get("needs_review"):
+                reasons.append(f"LLM uncertainty: {extraction.get('notes', '')}")
+            if geocode_result.get("needs_review"):
+                reasons.append(
+                    f"Geocoding uncertain (confidence={geocode_result.get('geocode_confidence', 0):.2f}). "
+                    f"Raw name: '{extraction.get('raw_name')}'"
+                )
+            _create_review_item(db, mention, " | ".join(reasons) or "Low confidence match")
+
+    return len(extractions)
+
+
+def process_video(db: Session, video: Video, cities: list[City]) -> bool:
+    """
+    Processes a single video against all cities.
+    Fetches the transcript once, then checks keyword windows for each city.
     Returns True on success, False on failure.
     """
     logger.info(f"Processing video: {video.youtube_video_id} - {video.title}")
@@ -141,7 +208,7 @@ def process_video(db: Session, video: Video, city: City) -> bool:
     db.commit()
 
     try:
-        # Step 1: Get transcript
+        # Step 1: Get transcript (cached or fetch)
         transcript = get_cached_transcript(video)
         if transcript is None:
             transcript = fetch_transcript(video, db)
@@ -153,79 +220,19 @@ def process_video(db: Session, video: Video, city: City) -> bool:
             db.commit()
             return False
 
-        # Step 2: Find keyword windows
-        keywords = city.keyword_list
-        windows = find_keyword_windows(transcript, keywords, window_seconds=180)
+        # Step 2–4: For each city, find keyword windows and extract businesses
+        total_extractions = 0
+        for city in cities:
+            total_extractions += _process_video_for_city(db, video, city, transcript)
 
-        if not windows:
-            logger.info(f"No keyword matches in {video.youtube_video_id}, skipping")
-            video.processing_status = ProcessingStatus.completed
-            video.processed_at = datetime.now(timezone.utc)
-            db.commit()
-            return True
-
-        logger.info(f"Found {len(windows)} keyword window(s) in {video.youtube_video_id}")
-
-        # Step 3: LLM extraction
-        published_date = video.published_at.strftime("%Y-%m-%d") if video.published_at else "unknown"
-        extractions = extract_businesses_from_video(
-            transcript=transcript,
-            keyword_windows=windows,
-            video_title=video.title,
-            published_date=published_date,
-            city_name=city.name,
-            country=city.country,
-        )
-
-        logger.info(f"LLM extracted {len(extractions)} business(es) from {video.youtube_video_id}")
-
-        # Step 4: Geocode and store each extraction
-        for extraction in extractions:
-            canonical_name = extraction.get("canonical_name", "").strip()
-            if not canonical_name:
-                continue
-
-            # Geocode
-            geocode_result = geocode_business(
-                canonical_name=canonical_name,
-                city_name=city.name,
-                country=city.country,
-                llm_confidence=extraction.get("confidence", 0.5),
-            )
-
-            # Update is_closed from LLM if geocoder didn't find it
-            if extraction.get("is_closed") and not geocode_result.get("is_closed"):
-                geocode_result["is_closed"] = True
-
-            # Get or create business
-            business, created = _get_or_create_business(db, geocode_result, city)
-            if created:
-                logger.info(f"Created new business: {business.name}")
-
-            # Update closed status if LLM says so
-            if extraction.get("is_closed") and not business.is_closed:
-                business.is_closed = True
-
-            # Create mention
-            mention = _create_mention(db, business, video, extraction, geocode_result)
-
-            # Create review queue item if needed
-            if mention.needs_review:
-                reasons = []
-                if extraction.get("needs_review"):
-                    reasons.append(f"LLM uncertainty: {extraction.get('notes', '')}")
-                if geocode_result.get("needs_review"):
-                    reasons.append(
-                        f"Geocoding uncertain (confidence={geocode_result.get('geocode_confidence', 0):.2f}). "
-                        f"Raw name: '{extraction.get('raw_name')}'"
-                    )
-                _create_review_item(db, mention, " | ".join(reasons) or "Low confidence match")
+        if total_extractions == 0:
+            logger.info(f"No keyword matches in any city for {video.youtube_video_id}")
 
         # Step 5: Mark video complete
         video.processing_status = ProcessingStatus.completed
         video.processed_at = datetime.now(timezone.utc)
         db.commit()
-        logger.info(f"Completed processing {video.youtube_video_id}")
+        logger.info(f"Completed {video.youtube_video_id} ({total_extractions} extraction(s) across all cities)")
         return True
 
     except Exception as e:
@@ -268,6 +275,11 @@ def run_pipeline(
         db.commit()
         logger.info(f"Reset {len(stuck)} stuck video(s) from 'processing' to 'pending'")
 
+    # Load all cities — every video is checked against all of them
+    all_cities = db.query(City).all()
+    if not all_cities:
+        logger.warning("No cities configured — pipeline has nothing to process against")
+
     # Step 1: Fetch new videos from playlists
     if video_id is None:
         playlist_query = db.query(Playlist)
@@ -276,7 +288,6 @@ def run_pipeline(
         playlists = playlist_query.all()
 
         for playlist in playlists:
-            city = playlist.city
             new_ids = fetch_playlist_videos(db, playlist)
             summary["playlists_checked"] += 1
             summary["new_videos_found"] += len(new_ids)
@@ -297,8 +308,7 @@ def run_pipeline(
         videos_to_process = video_query.all()
 
     for video in videos_to_process:
-        city = video.playlist.city
-        success = process_video(db, video, city)
+        success = process_video(db, video, all_cities)
         if success:
             if video.processing_status == ProcessingStatus.skipped:
                 summary["skipped"] += 1
