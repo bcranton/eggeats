@@ -86,6 +86,12 @@ function renderUnlocatedStrip() {
 
   drawer.style.display = "flex";
 
+  // Cap body height to the actual map height so the top is never clipped
+  const mapEl = document.getElementById("map");
+  if (mapEl) {
+    body.style.maxHeight = (mapEl.offsetHeight - 8) + "px";
+  }
+
   // Wire up toggle once (idempotent via flag)
   const handle = document.getElementById("unlocated-drawer-handle");
   if (!handle._drawerBound) {
