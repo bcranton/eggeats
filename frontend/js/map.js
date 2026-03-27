@@ -97,7 +97,7 @@ function renderMap(pins) {
 
     map = new mapboxgl.Map({
       container: "map",
-      style: "mapbox://styles/mapbox/dark-v11",
+      style: "mapbox://styles/mapbox/navigation-night-v1",
       center,
       zoom: defaultCity ? defaultCity.default_zoom : 12,
     });
