@@ -34,19 +34,21 @@
     </svg>
     Filters
   </button>
+  <button class="mobile-filter-btn mobile-noloc-btn" id="mobile-noloc-btn" aria-label="No location businesses" style="display:none">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="5" y1="5" x2="11" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="11" y1="5" x2="5" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    No Location
+  </button>
 </div>
 
 <!-- Main layout: filters | map | stats -->
 <div class="app-wrapper">
 
-  <!-- Left: Filters + Stats -->
+  <!-- Left: Filters -->
   <aside class="filter-panel" id="filter-panel">
-    <div class="stats-inline">
-      <span class="num" id="stat-places">–</span> <span class="label">Places</span>
-      <span class="stat-sep">·</span>
-      <span class="num" id="stat-mentions">–</span> <span class="label">Mentions</span>
-    </div>
-
     <h3 class="panel-heading">Filters</h3>
 
     <div class="filter-group">
@@ -87,8 +89,27 @@
     <div id="map"></div>
   </div>
 
-  <!-- Right: reserved for ads -->
-  <aside class="stats-panel"></aside>
+  <!-- Right: stats + no-location shortcut -->
+  <aside class="stats-panel">
+    <div class="stats-block">
+      <div class="panel-heading">On the map</div>
+      <div class="stats-inline">
+        <span class="num" id="stat-places">–</span>
+        <span class="label">places</span>
+        <span class="stat-sep">/</span>
+        <span class="num" id="stat-mentions">–</span>
+        <span class="label">mentions</span>
+      </div>
+    </div>
+    <div class="stats-block no-location-block" id="no-location-stat" style="display:none">
+      <div class="panel-heading">No fixed location</div>
+      <div class="stats-inline">
+        <span class="num" id="stat-no-location">–</span>
+        <span class="label">places</span>
+      </div>
+      <button class="no-location-btn" id="no-location-open-btn">View all</button>
+    </div>
+  </aside>
 
 </div>
 
@@ -103,6 +124,20 @@
   </div>
   <div class="info-panel-body" id="panel-body"></div>
   <div class="info-panel-address" id="panel-address"></div>
+</aside>
+
+<!-- No-location businesses panel (chains / unlocated) -->
+<aside class="no-location-panel" id="no-location-panel">
+  <div class="info-panel-header">
+    <div class="panel-header-top">
+      <div class="business-name">No Fixed Location</div>
+      <button class="close-btn" id="no-location-close" title="Close">✕</button>
+    </div>
+    <p class="no-location-subtitle">Places NL reviewed without a specific location — chains, general opinions, etc.</p>
+  </div>
+  <div class="no-location-body" id="no-location-body">
+    <p style="color:var(--color-text-muted);padding:20px 16px;font-size:13px;">Loading…</p>
+  </div>
 </aside>
 
 <!-- Mobile overlay (dims map behind filter drawer) -->

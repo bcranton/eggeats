@@ -267,6 +267,71 @@ def get_business(business_id: int, response: Response, db: Session = Depends(get
     return result
 
 
+class NoLocationBusiness(BaseModel):
+    """Business with no coordinates — chains or unlocated mentions."""
+    id: int
+    name: str
+    category: Optional[str]
+    is_closed: bool
+    sentiment_summary: Optional[str]
+    city_name: str
+    mentions: list[MentionSummary]
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/no-location", response_model=list[NoLocationBusiness])
+def get_no_location_businesses(
+    response: Response,
+    city_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns approved businesses that have no coordinates (chains, unlocated places).
+    These are surfaced in a separate list view since they cannot be pinned on the map.
+    """
+    response.headers["Cache-Control"] = MAP_DATA_CACHE
+
+    cache_key = f"no-location:{city_id}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    query = (
+        db.query(Business)
+        .filter(
+            Business.review_status == ReviewStatus.approved,
+            Business.lat.is_(None),
+        )
+        .options(
+            joinedload(Business.city),
+            joinedload(Business.mentions).joinedload(Mention.video),
+        )
+    )
+
+    if city_id:
+        query = query.filter(Business.city_id == city_id)
+
+    businesses = query.all()
+
+    result = [
+        NoLocationBusiness(
+            id=b.id,
+            name=b.name,
+            category=b.category,
+            is_closed=b.is_closed,
+            sentiment_summary=_dominant_sentiment(b.mentions),
+            city_name=b.city.name,
+            mentions=[_mention_to_summary(m) for m in b.mentions],
+        )
+        for b in businesses
+    ]
+
+    cache_set(cache_key, result)
+    return result
+
+
 @router.get("/config")
 def get_frontend_config():
     """Returns public config values needed by frontend (Mapbox token)."""

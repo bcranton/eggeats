@@ -32,7 +32,7 @@ For each qualifying mention, return a JSON object with these fields:
 - "category": one of "restaurant", "cafe", "bar", "shop", "attraction", "bakery", "market", "other"
 - "sentiment": one of "positive", "negative", "neutral", "mixed"
 - "sentiment_score": float from -1.0 (very negative) to 1.0 (very positive)
-- "quotes": array of verbatim transcript quotes (1-3 sentences max each) that express NL's opinion about this place
+- "quotes": array of 1–3 quotes expressing NL's opinion. Lightly clean each quote: fix obvious speech-to-text errors (e.g. "dub bubbling" → "doubling", "the the" → "the"), add basic punctuation, and capitalise sentence starts — but preserve NL's natural speaking voice and do NOT paraphrase or change meaning.
 - "timestamp_seconds": approximate timestamp in seconds from the video start (use the [Ns] markers)
 - "confidence": float 0.0-1.0 — how confident you are that "canonical_name" is correct
 - "is_closed": true if the transcript implies the business is/was closed or no longer exists, false otherwise, null if unknown

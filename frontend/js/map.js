@@ -43,6 +43,93 @@ async function bootstrap() {
 }
 
 // ──────────────────────────────────────────────────────────
+// No-location panel (chains / unlocated businesses)
+// ──────────────────────────────────────────────────────────
+
+let noLocationData = null;
+
+async function loadNoLocationData() {
+  const params = new URLSearchParams();
+  if (activeFilters.city) params.set("city_id", activeFilters.city);
+  const data = await fetch(`${API}/api/no-location?${params}`).then(r => r.json());
+  noLocationData = data;
+
+  const count = data.length;
+  const statBlock = document.getElementById("no-location-stat");
+  const mobileBtn = document.getElementById("mobile-noloc-btn");
+  if (count > 0) {
+    document.getElementById("stat-no-location").textContent = count;
+    statBlock.style.display = "";
+    if (window.matchMedia("(max-width: 768px)").matches) {
+      mobileBtn.style.display = "flex";
+    }
+  } else {
+    statBlock.style.display = "none";
+    mobileBtn.style.display = "none";
+  }
+}
+
+function openNoLocationPanel() {
+  if (!noLocationData) return;
+  renderNoLocationPanel(noLocationData);
+  document.getElementById("no-location-panel").classList.add("open");
+  document.getElementById("mobile-overlay").classList.add("active");
+  requestAnimationFrame(() => document.getElementById("mobile-overlay").classList.add("visible"));
+}
+
+function closeNoLocationPanel() {
+  document.getElementById("no-location-panel").classList.remove("open");
+  const overlay = document.getElementById("mobile-overlay");
+  overlay.classList.remove("visible");
+  overlay.addEventListener("transitionend", () => overlay.classList.remove("active"), { once: true });
+}
+
+function renderNoLocationPanel(businesses) {
+  const body = document.getElementById("no-location-body");
+  if (!businesses.length) {
+    body.innerHTML = `<p style="color:var(--color-text-muted);padding:20px 16px;font-size:13px;">No unlocated businesses found for this city.</p>`;
+    return;
+  }
+
+  body.innerHTML = "";
+  businesses.forEach(biz => {
+    const card = document.createElement("div");
+    card.className = "no-location-card";
+
+    const sentimentColor = SENTIMENT_COLORS[biz.sentiment_summary] || SENTIMENT_COLORS.null;
+    const sentimentLabel = biz.sentiment_summary ? capitalise(biz.sentiment_summary) : null;
+
+    const badgesHtml = [
+      biz.category ? `<span class="badge badge-category">${escapeHtml(biz.category)}</span>` : "",
+      sentimentLabel ? `<span class="badge badge-sentiment-${biz.sentiment_summary}">${sentimentEmoji(biz.sentiment_summary)} ${sentimentLabel}</span>` : "",
+      biz.is_closed ? `<span class="badge badge-closed">Closed</span>` : "",
+    ].filter(Boolean).join("");
+
+    const mentionsHtml = (biz.mentions || []).map(mention => {
+      const quotesHtml = (mention.quotes || []).slice(0, 2)
+        .map(q => `<div class="quote">"${escapeHtml(q)}"</div>`)
+        .join("");
+      const timeLabel = mention.timestamp_seconds ? ` (${formatTime(mention.timestamp_seconds)})` : "";
+      return `
+        <div class="mention-card" style="margin-top:10px; padding-top:10px;">
+          <div class="video-title">${escapeHtml(mention.video_title)}</div>
+          ${quotesHtml || `<div class="quote" style="opacity:0.5">No quotes extracted.</div>`}
+          <a class="watch-link" href="${mention.youtube_url}" target="_blank" rel="noopener">▶ Watch on YouTube${timeLabel}</a>
+        </div>`;
+    }).join("");
+
+    card.innerHTML = `
+      <div class="no-location-card-header">
+        <div class="no-location-card-name">${escapeHtml(biz.name)}</div>
+      </div>
+      <div class="no-location-card-badges">${badgesHtml}</div>
+      ${mentionsHtml}
+    `;
+    body.appendChild(card);
+  });
+}
+
+// ──────────────────────────────────────────────────────────
 // Data loading
 // ──────────────────────────────────────────────────────────
 
@@ -73,7 +160,10 @@ async function loadMapData() {
   if (activeFilters.category)  params.set("category", activeFilters.category);
   if (activeFilters.sentiment) params.set("sentiment", activeFilters.sentiment);
 
-  const data = await fetch(`${API}/api/map-data?${params}`).then(r => r.json());
+  const [data] = await Promise.all([
+    fetch(`${API}/api/map-data?${params}`).then(r => r.json()),
+    loadNoLocationData(),
+  ]);
   allPins = data;
   renderMap(data);
 }
@@ -261,6 +351,7 @@ function closePanel() {
 
 document.getElementById("filter-city").addEventListener("change", e => {
   activeFilters.city = e.target.value;
+  closeNoLocationPanel();
   loadMapData();
   // Fly to the selected city
   if (activeFilters.city && map) {
@@ -303,6 +394,9 @@ document.getElementById("filter-show-closed").addEventListener("change", e => {
 });
 
 document.getElementById("panel-close").addEventListener("click", closePanel);
+document.getElementById("no-location-open-btn").addEventListener("click", openNoLocationPanel);
+document.getElementById("mobile-noloc-btn").addEventListener("click", openNoLocationPanel);
+document.getElementById("no-location-close").addEventListener("click", closeNoLocationPanel);
 
 // ──────────────────────────────────────────────────────────
 // Mobile filter drawer
@@ -347,7 +441,10 @@ function closeFilterDrawer() {
 }
 
 document.getElementById("mobile-filter-btn").addEventListener("click", openFilterDrawer);
-mobileOverlay.addEventListener("click", closeFilterDrawer);
+mobileOverlay.addEventListener("click", () => {
+  closeFilterDrawer();
+  closeNoLocationPanel();
+});
 
 // ──────────────────────────────────────────────────────────
 // Utilities
