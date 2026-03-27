@@ -301,13 +301,30 @@ document.getElementById("panel-close").addEventListener("click", closePanel);
 // Mobile filter drawer
 // ──────────────────────────────────────────────────────────
 
-const filterPanel  = document.getElementById("filter-panel");
+const filterPanel   = document.getElementById("filter-panel");
 const mobileOverlay = document.getElementById("mobile-overlay");
 
+// Inject mobile-only UI elements into the filter drawer
+const isMobile = window.matchMedia("(max-width: 768px)");
+
+function injectMobileDrawerUI() {
+  if (filterPanel.querySelector(".filter-panel-drag-handle")) return; // already injected
+  const handle = document.createElement("div");
+  handle.className = "filter-panel-drag-handle";
+  filterPanel.prepend(handle);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "filter-panel-close";
+  closeBtn.setAttribute("aria-label", "Close filters");
+  closeBtn.textContent = "✕";
+  closeBtn.addEventListener("click", closeFilterDrawer);
+  filterPanel.prepend(closeBtn);
+}
+
 function openFilterDrawer() {
+  injectMobileDrawerUI();
   filterPanel.classList.add("open");
   mobileOverlay.classList.add("active");
-  // Trigger reflow then fade in overlay
   requestAnimationFrame(() => mobileOverlay.classList.add("visible"));
 }
 
@@ -320,7 +337,6 @@ function closeFilterDrawer() {
 }
 
 document.getElementById("mobile-filter-btn").addEventListener("click", openFilterDrawer);
-document.getElementById("filter-panel-close").addEventListener("click", closeFilterDrawer);
 mobileOverlay.addEventListener("click", closeFilterDrawer);
 
 // ──────────────────────────────────────────────────────────

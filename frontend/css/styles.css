@@ -467,7 +467,7 @@ select.filter-select:focus {
 
 /* ── Mobile filter drawer elements (hidden on desktop) ── */
 .mobile-filter-btn {
-  display: none;
+  display: none !important;
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
@@ -491,7 +491,6 @@ select.filter-select:focus {
 }
 
 .filter-panel-drag-handle {
-  display: none;
   width: 36px;
   height: 4px;
   background: var(--color-border);
@@ -501,7 +500,6 @@ select.filter-select:focus {
 }
 
 .filter-panel-close {
-  display: none;
   position: absolute;
   top: 14px;
   right: 14px;
@@ -564,7 +562,7 @@ select.filter-select:focus {
   }
 
   .mobile-filter-btn {
-    display: flex;
+    display: flex !important;
   }
 
   /* Hide right stats panel; filter panel becomes a drawer */
@@ -603,15 +601,10 @@ select.filter-select:focus {
   }
 
   .filter-panel-drag-handle {
-    display: block;
     position: absolute;
     top: 10px;
     left: 50%;
     transform: translateX(-50%);
-  }
-
-  .filter-panel-close {
-    display: block;
   }
 
   /* Overlay behind drawer */
