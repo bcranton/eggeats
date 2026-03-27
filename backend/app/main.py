@@ -12,7 +12,6 @@ from app.api import admin as admin_router
 from app.api import auth as auth_router
 from app.api import map as map_router
 from app.api.auth import get_admin_session
-from app.config import get_settings
 from app.database import get_db
 
 logging.basicConfig(level=logging.INFO)
@@ -33,19 +32,15 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down")
 
 
-_settings = get_settings()
-_is_production = _settings.environment == "production"
-
 app = FastAPI(
     title="Egg Eats",
     description="API for Egg Eats — A Northernlion Travel Guide",
     version="1.0.0",
     lifespan=lifespan,
-    # Hide API docs in production — they expose endpoint schemas and allow
-    # interactive testing. Still available in development.
-    docs_url=None if _is_production else "/docs",
-    redoc_url=None if _is_production else "/redoc",
-    openapi_url=None if _is_production else "/openapi.json",
+    # API docs disabled — endpoints are admin-only or internal
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 app.add_middleware(
