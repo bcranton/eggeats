@@ -33,7 +33,7 @@ unnoticed. Options:
 ---
 
 ### Multi-City UI
-When more cities are added (Kingston, Seattle, Los Angeles, Orlando, etc.), the frontend needs:
+When more cities are added (Kingston, Orlando, etc.), the frontend needs:
 - A city dropdown in the header that re-centers the map and filters pins
 - Separate map bounds per city so the view fits the active city
 - "All cities" mode that shows a zoomed-out world/North America view
