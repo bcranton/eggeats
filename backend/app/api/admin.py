@@ -194,6 +194,37 @@ def seed_database(
     }
 
 
+@router.post("/cities/virtual")
+def create_virtual_city(
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """
+    Creates the 'No Fixed Location' virtual city if it doesn't already exist.
+    Virtual cities are shown as a list view on the frontend (no map).
+    """
+    existing = db.query(City).filter(City.is_virtual == True).first()  # noqa: E712
+    if existing:
+        return {"city": {"id": existing.id, "name": existing.name}, "created": False}
+
+    city = City(
+        name="No Fixed Location",
+        country="–",
+        search_keywords="",
+        center_lat=0.0,
+        center_lng=0.0,
+        default_zoom=2,
+        is_virtual=True,
+    )
+    db.add(city)
+    db.commit()
+
+    from app.cache import cache_clear
+    cache_clear()
+
+    return {"city": {"id": city.id, "name": city.name}, "created": True}
+
+
 @router.get("/seed/status")
 def seed_status(
     db: Session = Depends(get_db),

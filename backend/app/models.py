@@ -57,6 +57,7 @@ class City(Base):
     center_lat: Mapped[float] = mapped_column(Float, nullable=False)
     center_lng: Mapped[float] = mapped_column(Float, nullable=False)
     default_zoom: Mapped[int] = mapped_column(Integer, default=12)
+    is_virtual: Mapped[bool] = mapped_column(Boolean, default=False)
 
     playlists: Mapped[list["Playlist"]] = relationship(back_populates="city")
     businesses: Mapped[list["Business"]] = relationship(back_populates="city")

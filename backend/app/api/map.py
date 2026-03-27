@@ -33,6 +33,7 @@ class CitySchema(BaseModel):
     center_lat: float
     center_lng: float
     default_zoom: int
+    is_virtual: bool = False
     business_count: int = 0
 
     class Config:
@@ -154,7 +155,8 @@ def get_cities(response: Response, db: Session = Depends(get_db)):
         schema.business_count = counts.get(city.id, 0)
         result.append(schema)
 
-    result.sort(key=lambda c: c.business_count, reverse=True)
+    # Real cities ordered by business count; virtual cities always at the end
+    result.sort(key=lambda c: (c.is_virtual, -c.business_count))
 
     cache_set("cities", result)
     return result

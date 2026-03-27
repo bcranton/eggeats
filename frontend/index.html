@@ -84,9 +84,16 @@
     </div>
   </aside>
 
-  <!-- Center: map -->
+  <!-- Center: map / list view -->
   <div class="map-wrapper">
     <div id="map"></div>
+    <div id="list-view" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="list-view-header">
+        <span class="panel-heading">No Fixed Location</span>
+        <span style="font-size:12px;color:var(--color-text-muted);">Chains and places reviewed without a specific location</span>
+      </div>
+      <div id="list-view-body" class="list-view-body"></div>
+    </div>
   </div>
 
   <!-- Right: stats + no-location shortcut -->

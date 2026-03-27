@@ -722,5 +722,26 @@ document.getElementById("btn-seed").addEventListener("click", async () => {
   }
 });
 
+document.getElementById("btn-create-virtual-city").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-create-virtual-city");
+  const statusEl = document.getElementById("virtual-city-status");
+  btn.disabled = true;
+  try {
+    const result = await apiFetch("/api/admin/cities/virtual", { method: "POST" });
+    if (result.created) {
+      toast(`Created "${result.city.name}" (id=${result.city.id})`, "success");
+      statusEl.innerHTML = `<span style="color:var(--color-positive);">✓ "${esc(result.city.name)}" city exists (id=${result.city.id})</span>`;
+    } else {
+      toast(`"${result.city.name}" already exists`, "success");
+      statusEl.innerHTML = `<span style="color:var(--color-positive);">✓ "${esc(result.city.name)}" city exists (id=${result.city.id})</span>`;
+    }
+    loadCities();
+  } catch (e) {
+    toast(`Failed: ${e.message}`, "error");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 // ── Start ──────────────────────────────────────────────────
 checkAuth();

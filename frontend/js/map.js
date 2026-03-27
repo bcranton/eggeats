@@ -16,6 +16,7 @@ let activeFilters = {
   sentiment: "",
   showClosed: true,
 };
+let listViewData = []; // businesses shown in list mode
 
 // Sentiment → marker colour mapping
 const SENTIMENT_COLORS = {
@@ -137,24 +138,36 @@ async function loadCities() {
   const cities = await fetch(`${API}/api/cities`).then(r => r.json());
   citiesById = Object.fromEntries(cities.map(c => [String(c.id), c]));
   const select = document.getElementById("filter-city");
+  // Clear existing options (in case of reload)
+  select.innerHTML = "";
   cities.forEach(city => {
     const opt = document.createElement("option");
     opt.value = city.id;
-    opt.textContent = city.business_count > 0
-      ? `${city.name} (${city.business_count})`
-      : city.name;
+    if (city.is_virtual) {
+      opt.textContent = `📋 ${city.name}`;
+    } else {
+      opt.textContent = city.business_count > 0
+        ? `${city.name} (${city.business_count})`
+        : city.name;
+    }
     select.appendChild(opt);
   });
 
-  // Select the first (most-reviewed) city by default
-  if (cities.length > 0) {
-    const first = cities[0];
+  // Select the first non-virtual (most-reviewed) city by default
+  const first = cities.find(c => !c.is_virtual) || cities[0];
+  if (first) {
     select.value = first.id;
     activeFilters.city = String(first.id);
   }
 }
 
 async function loadMapData() {
+  const city = citiesById[activeFilters.city];
+  if (city && city.is_virtual) {
+    await loadListView();
+    return;
+  }
+
   const params = new URLSearchParams();
   if (activeFilters.city)      params.set("city_id", activeFilters.city);
   if (activeFilters.category)  params.set("category", activeFilters.category);
@@ -165,7 +178,100 @@ async function loadMapData() {
     loadNoLocationData(),
   ]);
   allPins = data;
+  showMapView();
   renderMap(data);
+}
+
+// ──────────────────────────────────────────────────────────
+// List view (for virtual / no-fixed-location city)
+// ──────────────────────────────────────────────────────────
+
+async function loadListView() {
+  const params = new URLSearchParams();
+  if (activeFilters.city) params.set("city_id", activeFilters.city);
+
+  document.getElementById("loading").classList.remove("hidden");
+  try {
+    listViewData = await fetch(`${API}/api/no-location?${params}`).then(r => r.json());
+  } catch (e) {
+    console.error("Failed to load list view data:", e);
+    listViewData = [];
+  }
+
+  showListView();
+  renderListView();
+  document.getElementById("loading").classList.add("hidden");
+}
+
+function showListView() {
+  document.getElementById("map").style.display = "none";
+  document.getElementById("list-view").style.display = "flex";
+  // Hide the slide-in no-location panel (it's not needed in this mode)
+  document.getElementById("no-location-stat").style.display = "none";
+  document.getElementById("mobile-noloc-btn").style.display = "none";
+}
+
+function showMapView() {
+  document.getElementById("map").style.display = "";
+  document.getElementById("list-view").style.display = "none";
+}
+
+function renderListView() {
+  const container = document.getElementById("list-view-body");
+
+  // Apply category and sentiment filters client-side
+  let items = listViewData;
+  if (!activeFilters.showClosed) items = items.filter(b => !b.is_closed);
+  if (activeFilters.category)   items = items.filter(b => b.category === activeFilters.category);
+  if (activeFilters.sentiment)  items = items.filter(b => b.sentiment_summary === activeFilters.sentiment);
+
+  // Update stats
+  document.getElementById("stat-places").textContent = items.length;
+  const totalMentions = items.reduce((sum, b) => sum + b.mentions.length, 0);
+  document.getElementById("stat-mentions").textContent = totalMentions;
+
+  if (!items.length) {
+    container.innerHTML = `<p class="list-view-empty">No places found for the current filters.</p>`;
+    return;
+  }
+
+  container.innerHTML = "";
+  items.forEach(biz => {
+    const card = document.createElement("div");
+    card.className = "list-card";
+
+    const sentimentColor = SENTIMENT_COLORS[biz.sentiment_summary] || SENTIMENT_COLORS.null;
+    const sentimentLabel = biz.sentiment_summary ? capitalise(biz.sentiment_summary) : null;
+
+    const badgesHtml = [
+      biz.category ? `<span class="badge badge-category">${escapeHtml(biz.category)}</span>` : "",
+      sentimentLabel ? `<span class="badge badge-sentiment-${biz.sentiment_summary}">${sentimentEmoji(biz.sentiment_summary)} ${sentimentLabel}</span>` : "",
+      biz.is_closed ? `<span class="badge badge-closed">Closed</span>` : "",
+    ].filter(Boolean).join("");
+
+    const mentionsHtml = (biz.mentions || []).map(mention => {
+      const quotesHtml = (mention.quotes || []).slice(0, 2)
+        .map(q => `<div class="quote">"${escapeHtml(q)}"</div>`)
+        .join("");
+      const timeLabel = mention.timestamp_seconds ? ` (${formatTime(mention.timestamp_seconds)})` : "";
+      return `
+        <div class="mention-card" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--color-border);">
+          <div class="video-title">${escapeHtml(mention.video_title)}</div>
+          ${quotesHtml || `<div class="quote" style="opacity:0.5">No quotes extracted.</div>`}
+          <a class="watch-link" href="${mention.youtube_url}" target="_blank" rel="noopener">▶ Watch on YouTube${timeLabel}</a>
+        </div>`;
+    }).join("");
+
+    card.innerHTML = `
+      <div class="list-card-dot" style="background:${sentimentColor};"></div>
+      <div class="list-card-content">
+        <div class="list-card-name">${escapeHtml(biz.name)}</div>
+        <div class="list-card-badges">${badgesHtml}</div>
+        ${mentionsHtml}
+      </div>
+    `;
+    container.appendChild(card);
+  });
 }
 
 // ──────────────────────────────────────────────────────────
@@ -354,11 +460,13 @@ function closePanel() {
 document.getElementById("filter-city").addEventListener("change", e => {
   activeFilters.city = e.target.value;
   closeNoLocationPanel();
-  loadMapData();
-  // Fly to the selected city
-  if (activeFilters.city && map) {
-    const city = citiesById[activeFilters.city];
-    if (city) {
+  const city = citiesById[activeFilters.city];
+  if (city && city.is_virtual) {
+    loadListView();
+  } else {
+    loadMapData();
+    // Fly to the selected city
+    if (activeFilters.city && map && city) {
       map.flyTo({
         center: [city.center_lng, city.center_lat],
         zoom: city.default_zoom,
@@ -370,7 +478,7 @@ document.getElementById("filter-city").addEventListener("change", e => {
 
 document.getElementById("filter-category").addEventListener("change", e => {
   activeFilters.category = e.target.value;
-  loadMapData();
+  if (isListViewActive()) { renderListView(); } else { loadMapData(); }
   if (window.matchMedia("(max-width: 768px)").matches) closeFilterDrawer();
 });
 
@@ -385,15 +493,19 @@ document.querySelectorAll(".sentiment-btn").forEach(btn => {
       activeFilters.sentiment = sentiment;
       btn.classList.add("active");
     }
-    loadMapData();
+    if (isListViewActive()) { renderListView(); } else { loadMapData(); }
     if (window.matchMedia("(max-width: 768px)").matches) closeFilterDrawer();
   });
 });
 
 document.getElementById("filter-show-closed").addEventListener("change", e => {
   activeFilters.showClosed = e.target.checked;
-  renderMap(allPins);
+  if (isListViewActive()) { renderListView(); } else { renderMap(allPins); }
 });
+
+function isListViewActive() {
+  return document.getElementById("list-view").style.display !== "none";
+}
 
 document.getElementById("panel-close").addEventListener("click", closePanel);
 document.getElementById("no-location-open-btn").addEventListener("click", openNoLocationPanel);
