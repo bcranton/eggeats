@@ -105,7 +105,7 @@ def extract_businesses_from_segment(
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)
         except anthropic.RateLimitError:
-            wait = 2 ** (attempt + 2)
+            wait = 10 * (2 ** attempt)  # 10s, 20s, 40s
             logger.warning(f"Rate limited, waiting {wait}s before retry {attempt + 1}")
             time.sleep(wait)
         except anthropic.APIError as e:
@@ -131,7 +131,11 @@ def extract_businesses_from_video(
     """
     all_results: list[dict] = []
 
-    for window in keyword_windows:
+    for i, window in enumerate(keyword_windows):
+        if i > 0:
+            # Brief pause between windows to avoid Anthropic rate limits when
+            # multiple videos are being processed concurrently.
+            time.sleep(2.0)
         logger.info(
             f"Processing window {window['start_time']:.0f}s - {window['end_time']:.0f}s"
         )

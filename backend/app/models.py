@@ -136,7 +136,7 @@ class Mention(Base):
     business_id: Mapped[int] = mapped_column(Integer, ForeignKey("businesses.id"), nullable=False)
     video_id: Mapped[int] = mapped_column(Integer, ForeignKey("videos.id"), nullable=False)
     timestamp_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    raw_business_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    raw_business_name: Mapped[str] = mapped_column(Text, nullable=False)
     transcript_excerpt: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     sentiment: Mapped[Optional[Sentiment]] = mapped_column(Enum(Sentiment), nullable=True)
     sentiment_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -156,11 +156,11 @@ class ReviewQueue(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     mention_id: Mapped[int] = mapped_column(Integer, ForeignKey("mentions.id"), nullable=False)
-    reason: Mapped[str] = mapped_column(String(255), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[ReviewQueueStatus] = mapped_column(
         Enum(ReviewQueueStatus), default=ReviewQueueStatus.pending
     )
-    suggested_correction: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    suggested_correction: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     resolution_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
