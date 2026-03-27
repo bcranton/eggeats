@@ -2,19 +2,21 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, Response
+from sqlalchemy.orm import Session
 
-from app.api import map as map_router
-from app.api import auth as auth_router
 from app.api import admin as admin_router
+from app.api import auth as auth_router
+from app.api import map as map_router
+from app.api.auth import get_admin_session
+from app.config import get_settings
+from app.database import get_db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-import os
 
 # In Docker (Railway), frontend is copied to /frontend.
 # In local dev with docker-compose, it's mounted at /frontend too.
@@ -31,11 +33,19 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down")
 
 
+_settings = get_settings()
+_is_production = _settings.environment == "production"
+
 app = FastAPI(
     title="Egg Eats",
     description="API for Egg Eats — A Northernlion Travel Guide",
     version="1.0.0",
     lifespan=lifespan,
+    # Hide API docs in production — they expose endpoint schemas and allow
+    # interactive testing. Still available in development.
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
 )
 
 app.add_middleware(
@@ -68,10 +78,21 @@ if STATIC_DIR.exists():
     ASSET_CACHE = "public, max-age=3600, stale-while-revalidate=300" # 1 hour
 
     @app.get("/admin.html")
-    def serve_admin():
+    def serve_admin(
+        admin_token: str | None = Cookie(default=None),
+        db: Session = Depends(get_db),
+    ):
+        # Server-side auth check — redirect to Google login if not authenticated.
+        # The JS also does a session check, but this prevents unauthenticated
+        # users from even reading the page source.
+        try:
+            get_admin_session(admin_token=admin_token, db=db)
+        except HTTPException:
+            return RedirectResponse(url="/auth/google", status_code=302)
         return FileResponse(
             STATIC_DIR / "admin.html",
-            headers={"Cache-Control": HTML_CACHE},
+            # Never cache admin page — auth state must always be re-checked
+            headers={"Cache-Control": "no-store"},
         )
 
     @app.get("/")
