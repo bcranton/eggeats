@@ -295,8 +295,8 @@ def run_pipeline(
         db.commit()
         logger.info(f"Reset {len(stuck)} stuck video(s) from 'processing' to 'pending'")
 
-    # Load all cities — every video is checked against all of them
-    all_cities = db.query(City).all()
+    # Load all real (non-virtual) cities — virtual cities are for manual assignment only
+    all_cities = db.query(City).filter(City.is_virtual == False).all()  # noqa: E712
     if not all_cities:
         logger.warning("No cities configured — pipeline has nothing to process against")
 

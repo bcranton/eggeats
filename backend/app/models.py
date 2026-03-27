@@ -64,7 +64,7 @@ class City(Base):
 
     @property
     def keyword_list(self) -> list[str]:
-        return [k.strip() for k in self.search_keywords.split(",")]
+        return [k.strip() for k in self.search_keywords.split(",") if k.strip()]
 
 
 class Playlist(Base):
