@@ -196,8 +196,9 @@ async function loadVideos() {
         <td><span class="chip chip-${v.processing_status}">${v.processing_status}</span></td>
         <td>${v.mention_count}</td>
         <td>${errorHtml}</td>
-        <td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
           <button class="btn btn-secondary btn-sm" onclick="reprocessVideo(${v.id})">↻ Reprocess</button>
+          ${v.mention_count > 0 ? `<button class="btn btn-danger btn-sm" onclick="clearExtractions(${v.id}, this)">✕ Clear</button>` : ""}
         </td>
       `;
       tbody.appendChild(tr);
@@ -215,6 +216,20 @@ async function reprocessVideo(videoId) {
     loadVideos();
   } catch (e) {
     toast(`Failed: ${e.message}`, "error");
+  }
+}
+
+async function clearExtractions(videoId, btn) {
+  if (!confirm("Delete all mentions and businesses from this video? Orphaned businesses (no other mentions) will also be removed. The video will be reset to pending.")) return;
+  btn.disabled = true;
+  try {
+    const result = await apiFetch(`/api/admin/videos/${videoId}/extractions`, { method: "DELETE" });
+    toast(`Cleared: ${result.mentions_deleted} mention(s), ${result.businesses_deleted} business(es) deleted`, "success");
+    loadVideos();
+    loadStats();
+  } catch (e) {
+    toast(`Failed: ${e.message}`, "error");
+    btn.disabled = false;
   }
 }
 

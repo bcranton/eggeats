@@ -344,6 +344,56 @@ def reprocess_video(
     return {"message": f"Video {video_id} queued for reprocessing"}
 
 
+@router.delete("/videos/{video_id}/extractions")
+def delete_video_extractions(
+    video_id: int,
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """
+    Deletes all mentions and review queue items extracted from a video,
+    then deletes any businesses that have no remaining mentions.
+    Resets the video to pending so it can be reprocessed cleanly.
+    """
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    mentions = db.query(Mention).filter(Mention.video_id == video_id).all()
+    business_ids = {m.business_id for m in mentions}
+
+    # Delete review queue items for these mentions
+    mention_ids = [m.id for m in mentions]
+    if mention_ids:
+        db.query(ReviewQueue).filter(ReviewQueue.mention_id.in_(mention_ids)).delete(synchronize_session=False)
+
+    # Delete the mentions themselves
+    db.query(Mention).filter(Mention.video_id == video_id).delete(synchronize_session=False)
+
+    # Delete businesses that now have no mentions left
+    deleted_businesses = 0
+    for biz_id in business_ids:
+        remaining = db.query(Mention).filter(Mention.business_id == biz_id).count()
+        if remaining == 0:
+            db.query(Business).filter(Business.id == biz_id).delete()
+            deleted_businesses += 1
+
+    # Reset video to pending for reprocessing
+    video.processing_status = ProcessingStatus.pending
+    video.error_message = None
+
+    db.commit()
+
+    from app.cache import cache_clear
+    cache_clear()
+
+    return {
+        "message": f"Cleared extractions for video {video_id}",
+        "mentions_deleted": len(mention_ids),
+        "businesses_deleted": deleted_businesses,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
