@@ -130,6 +130,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   padding: 0 5%;
+  background: var(--color-surface);
 }
 
 .city-bar {
