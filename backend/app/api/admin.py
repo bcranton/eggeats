@@ -509,7 +509,11 @@ def get_businesses(
         extra_addresses = []
         if b.extra_addresses_json:
             try:
-                extra_addresses = [e["address"] for e in json.loads(b.extra_addresses_json) if e.get("address")]
+                for e in json.loads(b.extra_addresses_json):
+                    if isinstance(e, dict) and e.get("address"):
+                        extra_addresses.append(e["address"])
+                    elif isinstance(e, str) and e:
+                        extra_addresses.append(e)
             except (ValueError, TypeError):
                 pass
         result.append(BusinessAdmin(

@@ -220,11 +220,11 @@ def get_map_data(
         )
         # Primary pin
         pins.append(BusinessMapPin(lat=b.lat, lng=b.lng, **base))
-        # Extra location pins
+        # Extra location pins (entries may be {address,lat,lng} dicts or legacy plain strings)
         if b.extra_addresses_json:
             try:
                 for loc in _json.loads(b.extra_addresses_json):
-                    if loc.get("lat") and loc.get("lng"):
+                    if isinstance(loc, dict) and loc.get("lat") and loc.get("lng"):
                         pins.append(BusinessMapPin(lat=loc["lat"], lng=loc["lng"], **base))
             except (ValueError, TypeError):
                 pass
