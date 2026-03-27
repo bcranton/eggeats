@@ -17,6 +17,8 @@ let activeFilters = {
   showClosed: true,
 };
 let listViewData = []; // businesses shown in list mode
+let visiblePins = []; // currently rendered map pins (filtered)
+let currentPinIndex = -1; // index into visiblePins for the open panel
 
 // Sentiment → marker colour mapping
 const SENTIMENT_COLORS = {
@@ -331,8 +333,10 @@ function addMarkers(visible) {
     currentPopup = null;
   }
 
+  visiblePins = visible;
+
   // Add markers
-  visible.forEach(pin => {
+  visible.forEach((pin, idx) => {
     const color = SENTIMENT_COLORS[pin.sentiment_summary] || SENTIMENT_COLORS.null;
 
     // Create custom marker element
@@ -368,7 +372,7 @@ function addMarkers(visible) {
 
     el.addEventListener("click", (e) => {
       e.stopPropagation();
-      openBusinessPanel(pin.id);
+      openBusinessPanel(pin.id, idx);
     });
 
     currentMarkers.push(marker);
@@ -386,16 +390,21 @@ function addMarkers(visible) {
 // Business detail panel
 // ──────────────────────────────────────────────────────────
 
-async function openBusinessPanel(businessId) {
+async function openBusinessPanel(businessId, pinIndex) {
   const panel = document.getElementById("info-panel");
   const body = document.getElementById("panel-body");
   const meta = document.getElementById("panel-meta");
+
+  if (pinIndex !== undefined) {
+    currentPinIndex = pinIndex;
+  }
 
   // Show loading state
   document.getElementById("panel-name").textContent = "Loading\u2026";
   body.innerHTML = "";
   meta.innerHTML = "";
   panel.classList.add("open");
+  updatePanelNav();
 
   try {
     const biz = await fetch(`${API}/api/businesses/${businessId}`).then(r => r.json());
@@ -464,7 +473,36 @@ async function openBusinessPanel(businessId) {
 
 function closePanel() {
   document.getElementById("info-panel").classList.remove("open");
+  currentPinIndex = -1;
 }
+
+function updatePanelNav() {
+  const total = visiblePins.length;
+  const nav = document.getElementById("panel-nav");
+  const counter = document.getElementById("panel-nav-counter");
+  const prevBtn = document.getElementById("panel-prev");
+  const nextBtn = document.getElementById("panel-next");
+
+  if (total < 2 || currentPinIndex < 0) {
+    nav.style.display = "none";
+    return;
+  }
+
+  nav.style.display = "flex";
+  counter.textContent = `${currentPinIndex + 1} / ${total}`;
+  prevBtn.disabled = currentPinIndex === 0;
+  nextBtn.disabled = currentPinIndex === total - 1;
+}
+
+function navigateToPin(index) {
+  if (index < 0 || index >= visiblePins.length) return;
+  const pin = visiblePins[index];
+  openBusinessPanel(pin.id, index);
+  map.easeTo({ center: [pin.lng, pin.lat], duration: 300 });
+}
+
+document.getElementById("panel-prev").addEventListener("click", () => navigateToPin(currentPinIndex - 1));
+document.getElementById("panel-next").addEventListener("click", () => navigateToPin(currentPinIndex + 1));
 
 // ──────────────────────────────────────────────────────────
 // Filter handlers
