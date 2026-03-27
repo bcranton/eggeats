@@ -35,7 +35,8 @@ async function bootstrap() {
   try {
     const config = await fetch(`${API}/api/config`).then(r => r.json());
     mapboxgl.accessToken = config.mapbox_access_token;
-    await Promise.all([loadCities(), loadMapData()]);
+    await loadCities();
+    await loadMapData();
   } catch (err) {
     console.error("Bootstrap error:", err);
     document.getElementById("loading").innerHTML =
