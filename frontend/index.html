@@ -24,8 +24,18 @@
 <!-- Main layout: filters | map | stats -->
 <div class="app-wrapper">
 
-  <!-- Left: Filters -->
+  <!-- Left: Filters + Stats -->
   <aside class="filter-panel">
+    <h3 class="panel-heading">Stats</h3>
+    <div class="stat-box">
+      <div class="num" id="stat-places">–</div>
+      <div class="label">Places</div>
+    </div>
+    <div class="stat-box">
+      <div class="num" id="stat-mentions">–</div>
+      <div class="label">Mentions</div>
+    </div>
+
     <h3 class="panel-heading">Filters</h3>
 
     <div class="filter-group">
@@ -69,18 +79,8 @@
     <div id="map"></div>
   </div>
 
-  <!-- Right: Stats -->
-  <aside class="stats-panel">
-    <h3 class="panel-heading">Stats</h3>
-    <div class="stat-box">
-      <div class="num" id="stat-places">–</div>
-      <div class="label">Places</div>
-    </div>
-    <div class="stat-box">
-      <div class="num" id="stat-mentions">–</div>
-      <div class="label">Mentions</div>
-    </div>
-  </aside>
+  <!-- Right: reserved for ads -->
+  <aside class="stats-panel"></aside>
 
 </div>
 
