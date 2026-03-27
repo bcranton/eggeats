@@ -186,27 +186,42 @@ body {
 
 .unlocated-drawer-handle {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px 10px;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 20px;
+  height: 44px;
   cursor: pointer;
-  background: none;
-  border: none;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
   color: var(--color-text);
-  width: 100%;
+  width: calc(100% - 32px);
+  margin: 6px 16px;
   user-select: none;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .unlocated-drawer-handle:hover {
-  background: rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.08);
+  border-color: var(--color-text-muted);
 }
 
 .unlocated-drawer-pill {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--color-border);
+  /* repurposed as a chevron icon via border trick */
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--color-text-muted);
+  border-top: 2px solid var(--color-text-muted);
+  transform: rotate(-45deg) translateY(2px);
+  flex-shrink: 0;
+  transition: transform 0.25s;
+}
+
+.unlocated-drawer.open .unlocated-drawer-pill {
+  transform: rotate(135deg) translateY(2px);
 }
 
 #unlocated-drawer-label {
@@ -215,7 +230,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: var(--color-text);
   line-height: 1;
 }
 

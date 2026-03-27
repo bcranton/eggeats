@@ -82,7 +82,7 @@ function renderUnlocatedStrip() {
   const cityLabel = city ? city.name : "This City";
   const count = items.length;
   document.getElementById("unlocated-drawer-label").textContent =
-    `↑ ${count} place${count !== 1 ? "s" : ""} without a location in ${cityLabel}`;
+    `${count} place${count !== 1 ? "s" : ""} without a location in ${cityLabel}`;
 
   drawer.style.display = "flex";
 
@@ -93,17 +93,12 @@ function renderUnlocatedStrip() {
     handle.addEventListener("click", () => {
       const isOpen = drawer.classList.toggle("open");
       handle.setAttribute("aria-expanded", String(isOpen));
-      // Flip arrow direction
-      const label = document.getElementById("unlocated-drawer-label");
-      label.textContent = label.textContent.replace(/^[↑↓]/, isOpen ? "↓" : "↑");
     });
   }
 
   // Reset to closed state when re-rendered (city changed)
   drawer.classList.remove("open");
   handle.setAttribute("aria-expanded", "false");
-  const label = document.getElementById("unlocated-drawer-label");
-  label.textContent = label.textContent.replace(/^[↑↓]/, "↑");
 
   body.innerHTML = "";
   items.forEach(biz => {
