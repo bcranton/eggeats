@@ -24,6 +24,11 @@
   <p class="subtitle">A Northernlion Travel Guide</p>
 </div>
 
+<!-- City selector: full-width row so it aligns with the centered title -->
+<div class="city-bar">
+  <select class="city-select" id="filter-city"></select>
+</div>
+
 <!-- Main layout: filters | map | stats -->
 <div class="app-wrapper">
 
@@ -70,11 +75,8 @@
     </div>
   </aside>
 
-  <!-- Center: city bar + map -->
+  <!-- Center: map -->
   <div class="map-wrapper">
-    <div class="city-bar">
-      <select class="city-select" id="filter-city"></select>
-    </div>
     <div id="map"></div>
   </div>
 
