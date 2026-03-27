@@ -3,23 +3,22 @@
    ========================================================= */
 
 :root {
-  --color-bg: #060c1a;
-  --color-surface: #0d1b35;
-  --color-surface-2: #152241;
-  --color-border: #1e3460;
-  --color-text: #ffffff;
-  --color-text-muted: #7a9cc5;
-  --color-accent: #d92b3a;
-  --color-accent-hover: #f03344;
-  --color-positive: #4caf50;
-  --color-negative: #d92b3a;
-  --color-neutral: #7a9cc5;
+  --color-bg: #0f0f13;
+  --color-surface: #16161c;
+  --color-surface-2: #1e1e26;
+  --color-border: #2a2a36;
+  --color-text: #eeeef2;
+  --color-text-muted: #888899;
+  --color-accent: #c0253a;
+  --color-positive: #4ade80;
+  --color-negative: #c0253a;
+  --color-neutral: #888899;
   --color-mixed: #f59e0b;
   --font-title: 'Alfa Slab One', serif;
   --font-heading: 'Oswald', sans-serif;
   --font: 'Barlow', -apple-system, BlinkMacSystemFont, sans-serif;
   --radius: 8px;
-  --shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -353,15 +352,15 @@ select.filter-select:focus {
   border: 1px solid var(--color-border);
 }
 
-.badge-sentiment-positive { background: rgba(76,175,80,0.15);  color: var(--color-positive); }
-.badge-sentiment-negative { background: rgba(217,43,58,0.15);  color: var(--color-negative); }
+.badge-sentiment-positive { background: rgba(74,222,128,0.12);  color: var(--color-positive); }
+.badge-sentiment-negative { background: rgba(192,37,58,0.15);   color: var(--color-negative); }
 .badge-sentiment-neutral,
-.badge-sentiment-mixed    { background: rgba(122,156,197,0.15); color: var(--color-text-muted); }
+.badge-sentiment-mixed    { background: rgba(136,136,153,0.15); color: var(--color-text-muted); }
 
 .badge-closed {
-  background: rgba(217, 43, 58, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(217, 43, 58, 0.4);
+  background: rgba(192, 37, 58, 0.12);
+  color: #e57373;
+  border: 1px solid rgba(192, 37, 58, 0.3);
 }
 
 .info-panel-body {
