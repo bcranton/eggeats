@@ -3,7 +3,7 @@ Fetches YouTube video transcripts.
 
 Primary:  Supadata SDK (https://supadata.ai) — avoids IP blocking on Railway
           and other datacenter hosts. Set SUPADATA_API_KEY in env to use.
-          Uses mode="native" so only actual captions are returned (no AI generation).
+          Uses mode="native" (native captions only, no AI generation) via client.transcript().
 Fallback: youtube-transcript-api — works on local/residential IPs.
 """
 import json
@@ -36,7 +36,11 @@ def _fetch_via_supadata(video_id: str, api_key: str) -> list[dict] | None:
 
     client = Supadata(api_key=api_key)
     try:
-        result = client.youtube.transcript(video_id=video_id, lang="en")
+        result = client.transcript(
+            url=f"https://www.youtube.com/watch?v={video_id}",
+            lang="en",
+            mode="native",
+        )
     except SupadataError as e:
         logger.warning(f"Supadata: no transcript for {video_id}: {e}")
         return None
