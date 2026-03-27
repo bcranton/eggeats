@@ -87,6 +87,14 @@ def _fetch_transcript_with_retry(video_id: str) -> list[dict] | None:
                 logger.warning(f"Empty transcript returned for {video_id}")
                 return None
 
+            # Detect garbled responses (YouTube internal metadata, not real text).
+            # Real transcripts have mostly alphabetic words; garbled ones are full of
+            # JSON-like symbols e.g. '0:{"a":"$@1","f":"","b":"i-dEv7N7_G2B1apWtEAsb"}'
+            alpha_chars = sum(c.isalpha() for c in text)
+            if len(text) < 100 or alpha_chars / len(text) < 0.5:
+                logger.warning(f"Garbled transcript response for {video_id} (alpha ratio={alpha_chars/len(text):.2f}): {text[:120]!r}")
+                return None
+
             segments = _plain_text_to_segments(text)
             logger.info(f"Fetched transcript for {video_id}: {len(text.split())} words → {len(segments)} segments")
             return segments
