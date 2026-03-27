@@ -130,6 +130,43 @@
     </div>
   </div>
 
+  <!-- Tab: Setup -->
+  <div class="tab-panel" id="tab-setup">
+    <div class="section-header">
+      <h2>Database Setup</h2>
+    </div>
+
+    <!-- Seed status -->
+    <div id="seed-status-box" style="margin-bottom:24px;padding:16px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);font-size:13px;">
+      <span class="spinner"></span> Loading seed status…
+    </div>
+
+    <!-- Seed form -->
+    <div style="background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);padding:20px;max-width:560px;">
+      <h3 style="margin:0 0 4px;">Seed City + Playlist</h3>
+      <p style="margin:0 0 16px;font-size:13px;color:var(--color-text-muted);">Creates the city and playlist rows needed before the pipeline can run. Safe to call multiple times.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <label style="font-size:13px;color:var(--color-text-muted);">City name</label>
+        <input type="text" id="seed-city-name" value="Vancouver" style="padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
+
+        <label style="font-size:13px;color:var(--color-text-muted);">Country code</label>
+        <input type="text" id="seed-country" value="CA" style="padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
+
+        <label style="font-size:13px;color:var(--color-text-muted);">Transcript search keywords (comma-separated)</label>
+        <input type="text" id="seed-keywords" value="Vancouver,BC,van,yvr,yaletown,gastown,kitsilano" style="padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
+
+        <label style="font-size:13px;color:var(--color-text-muted);">YouTube playlist ID</label>
+        <input type="text" id="seed-playlist-id" value="PLvswIqZLpR-VpoMuxzO9oT3F9-FtHScpn" style="padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
+
+        <label style="font-size:13px;color:var(--color-text-muted);">Playlist name</label>
+        <input type="text" id="seed-playlist-name" value="Northernlion Vancouver" style="padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
+      </div>
+      <div style="margin-top:16px;">
+        <button class="btn btn-primary" id="btn-seed">Seed Database</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Toast container -->
@@ -169,42 +206,6 @@
     <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
       <button class="btn btn-secondary" id="edit-cancel">Cancel</button>
       <button class="btn btn-primary" id="edit-save">Save</button>
-    </div>
-  </div>
-  <!-- Tab: Setup -->
-  <div class="tab-panel" id="tab-setup">
-    <div class="section-header">
-      <h2>Database Setup</h2>
-    </div>
-
-    <!-- Seed status -->
-    <div id="seed-status-box" style="margin-bottom:24px;padding:16px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);font-size:13px;">
-      <span class="spinner"></span> Loading seed status…
-    </div>
-
-    <!-- Seed form -->
-    <div style="background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);padding:20px;max-width:560px;">
-      <h3 style="margin:0 0 4px;">Seed City + Playlist</h3>
-      <p style="margin:0 0 16px;font-size:13px;color:var(--color-text-muted);">Creates the city and playlist rows needed before the pipeline can run. Safe to call multiple times.</p>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <label style="font-size:13px;color:var(--color-text-muted);">City name</label>
-        <input type="text" id="seed-city-name" value="Vancouver" style="padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
-
-        <label style="font-size:13px;color:var(--color-text-muted);">Country code</label>
-        <input type="text" id="seed-country" value="CA" style="padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
-
-        <label style="font-size:13px;color:var(--color-text-muted);">Transcript search keywords (comma-separated)</label>
-        <input type="text" id="seed-keywords" value="Vancouver,BC,van,yvr,yaletown,gastown,kitsilano" style="padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
-
-        <label style="font-size:13px;color:var(--color-text-muted);">YouTube playlist ID</label>
-        <input type="text" id="seed-playlist-id" value="PLvswIqZLpR-VpoMuxzO9oT3F9-FtHScpn" style="padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
-
-        <label style="font-size:13px;color:var(--color-text-muted);">Playlist name</label>
-        <input type="text" id="seed-playlist-name" value="Northernlion Vancouver" style="padding:8px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
-      </div>
-      <div style="margin-top:16px;">
-        <button class="btn btn-primary" id="btn-seed">Seed Database</button>
-      </div>
     </div>
   </div>
 

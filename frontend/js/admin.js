@@ -220,23 +220,44 @@ async function reprocessVideo(videoId) {
 
 document.getElementById("btn-refresh-videos").addEventListener("click", loadVideos);
 
+let pipelinePoller = null;
+
+function startPipelinePolling() {
+  const statusEl = document.getElementById("pipeline-status");
+  statusEl.style.display = "block";
+  statusEl.innerHTML = `<span class="spinner"></span> Pipeline running… (auto-refreshing every 15s — <button class="btn btn-secondary btn-sm" onclick="stopPipelinePolling()">Stop</button>)`;
+
+  if (pipelinePoller) clearInterval(pipelinePoller);
+  pipelinePoller = setInterval(() => {
+    loadVideos();
+    loadStats();
+  }, 15000);
+}
+
+function stopPipelinePolling() {
+  if (pipelinePoller) {
+    clearInterval(pipelinePoller);
+    pipelinePoller = null;
+  }
+  const statusEl = document.getElementById("pipeline-status");
+  statusEl.style.display = "none";
+}
+
 document.getElementById("btn-run-pipeline").addEventListener("click", async () => {
   const btn = document.getElementById("btn-run-pipeline");
-  const statusEl = document.getElementById("pipeline-status");
   btn.disabled = true;
-  statusEl.style.display = "block";
 
   try {
     await apiFetch("/api/admin/pipeline/run", {
       method: "POST",
       body: JSON.stringify({ only_new: true }),
     });
-    toast("Pipeline started in background. Refresh videos in a moment.", "success");
+    toast("Pipeline started. Videos tab will auto-refresh every 15s.", "success");
+    startPipelinePolling();
   } catch (e) {
     toast(`Failed to start pipeline: ${e.message}`, "error");
   } finally {
     btn.disabled = false;
-    statusEl.style.display = "none";
   }
 });
 
