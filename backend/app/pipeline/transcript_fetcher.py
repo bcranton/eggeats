@@ -18,8 +18,57 @@ from app.models import Video, ProcessingStatus
 
 logger = logging.getLogger(__name__)
 
-# Delay between API calls to avoid rate limiting
-REQUEST_DELAY_SECONDS = 0.5
+# Delay between successful API calls to avoid rate limiting
+REQUEST_DELAY_SECONDS = 2.0
+
+# Retry settings for 429 / transient errors
+MAX_RETRIES = 4
+RETRY_BASE_DELAY_SECONDS = 30  # first retry after 30s, then 60s, 120s, 240s
+
+
+def _fetch_transcript_with_retry(video_id: str):
+    """
+    Fetches transcript with exponential backoff on 429 / transient errors.
+    Returns (transcript_list, transcript) or raises on non-retryable error.
+    """
+    last_exc = None
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+
+            transcript = None
+            try:
+                transcript = transcript_list.find_manually_created_transcript(["en", "en-US", "en-GB"])
+            except NoTranscriptFound:
+                try:
+                    transcript = transcript_list.find_generated_transcript(["en", "en-US", "en-GB"])
+                except NoTranscriptFound:
+                    # Try any available transcript
+                    for t in transcript_list:
+                        transcript = t
+                        break
+
+            return transcript
+
+        except (TranscriptsDisabled, NoTranscriptFound):
+            raise  # Non-retryable — surface immediately
+        except Exception as e:
+            last_exc = e
+            err_str = str(e)
+            is_rate_limit = "429" in err_str or "Too Many Requests" in err_str or "sorry" in err_str.lower()
+
+            if attempt < MAX_RETRIES and is_rate_limit:
+                delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
+                logger.warning(
+                    f"Rate limited fetching transcript for {video_id} "
+                    f"(attempt {attempt + 1}/{MAX_RETRIES + 1}). "
+                    f"Retrying in {delay}s…"
+                )
+                time.sleep(delay)
+            else:
+                raise
+
+    raise last_exc
 
 
 def fetch_transcript(video: Video, db: Session) -> list[dict] | None:
@@ -28,20 +77,7 @@ def fetch_transcript(video: Video, db: Session) -> list[dict] | None:
     Returns parsed transcript (list of {text, start, duration}) or None.
     """
     try:
-        # Try manual transcript first, then auto-generated English
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video.youtube_video_id)
-
-        transcript = None
-        try:
-            transcript = transcript_list.find_manually_created_transcript(["en", "en-US", "en-GB"])
-        except NoTranscriptFound:
-            try:
-                transcript = transcript_list.find_generated_transcript(["en", "en-US", "en-GB"])
-            except NoTranscriptFound:
-                # Try any available transcript
-                for t in transcript_list:
-                    transcript = t
-                    break
+        transcript = _fetch_transcript_with_retry(video.youtube_video_id)
 
         if transcript is None:
             logger.warning(f"No transcript found for {video.youtube_video_id}")
