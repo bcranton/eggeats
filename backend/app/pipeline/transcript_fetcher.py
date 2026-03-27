@@ -25,30 +25,46 @@ REQUEST_DELAY_SECONDS = 2.0
 MAX_RETRIES = 4
 RETRY_BASE_DELAY_SECONDS = 30  # first retry after 30s, then 60s, 120s, 240s
 
+# Single instance — the new API requires instantiation (not class-method calls)
+_api = YouTubeTranscriptApi()
+
+
+def _pick_best_transcript(transcript_list):
+    """
+    Given a TranscriptList from api.list(), returns the best available
+    transcript in order of preference:
+      1. Manually-created English
+      2. Auto-generated English
+      3. Any transcript
+    Returns None if the list is empty.
+    """
+    manual_en = None
+    generated_en = None
+    fallback = None
+
+    for t in transcript_list:
+        lang = t.language_code.lower()
+        if not t.is_generated and lang.startswith("en"):
+            manual_en = t
+            break  # best possible — stop early
+        if t.is_generated and lang.startswith("en") and generated_en is None:
+            generated_en = t
+        if fallback is None:
+            fallback = t
+
+    return manual_en or generated_en or fallback
+
 
 def _fetch_transcript_with_retry(video_id: str):
     """
     Fetches transcript with exponential backoff on 429 / transient errors.
-    Returns transcript or raises on non-retryable error.
+    Returns a Transcript object or raises on non-retryable error.
     """
     last_exc = None
     for attempt in range(MAX_RETRIES + 1):
         try:
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-
-            transcript = None
-            try:
-                transcript = transcript_list.find_manually_created_transcript(["en", "en-US", "en-GB"])
-            except NoTranscriptFound:
-                try:
-                    transcript = transcript_list.find_generated_transcript(["en", "en-US", "en-GB"])
-                except NoTranscriptFound:
-                    # Try any available transcript
-                    for t in transcript_list:
-                        transcript = t
-                        break
-
-            return transcript
+            transcript_list = _api.list(video_id)
+            return _pick_best_transcript(transcript_list)
 
         except (NoTranscriptFound, TranscriptsDisabled):
             raise  # Genuinely no transcript — don't retry
@@ -84,9 +100,11 @@ def fetch_transcript(video: Video, db: Session) -> list[dict] | None:
             return None
 
         data = transcript.fetch()
-        # Convert FetchedTranscript to plain list of dicts
-        parsed = [{"text": item["text"], "start": item["start"], "duration": item["duration"]}
-                  for item in data]
+        # Segments are objects with attribute access in youtube-transcript-api 0.6.x
+        parsed = [
+            {"text": s.text, "start": s.start, "duration": s.duration}
+            for s in data
+        ]
 
         video.transcript_raw = json.dumps(parsed)
         video.transcript_fetched_at = datetime.now(timezone.utc)
@@ -96,7 +114,7 @@ def fetch_transcript(video: Video, db: Session) -> list[dict] | None:
         return parsed
 
     except TranscriptsDisabled:
-        logger.warning(f"Transcripts disabled for {video.youtube_video_id}")
+        logger.warning(f"Transcripts disabled for {video.youtube_video_id} (may be bot-detection)")
         return None
     except Exception as e:
         logger.error(f"Error fetching transcript for {video.youtube_video_id}: {e}")
