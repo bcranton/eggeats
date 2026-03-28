@@ -16,6 +16,12 @@ function sortMentions(mentions) {
   return [...mentions].sort((a, b) => titleDate(b.video_title) - titleDate(a.video_title));
 }
 
+// CSS custom-property style string for the quote border colour
+function quoteColorStyle(sentiment) {
+  const color = SENTIMENT_COLORS[sentiment] || SENTIMENT_COLORS.null;
+  return `style="--quote-color:${color}"`;
+}
+
 // State
 let map = null;
 let allPins = [];
@@ -136,7 +142,7 @@ function renderUnlocatedStrip() {
 
     const mentionsHtml = sortMentions(biz.mentions || []).map(mention => {
       const quotesHtml = (mention.quotes || [])
-        .map(q => `<div class="quote">"${escapeHtml(q)}"</div>`)
+        .map(q => `<div class="quote" ${quoteColorStyle(mention.sentiment)}>"${escapeHtml(q)}"</div>`)
         .join("");
       const timeLabel = mention.timestamp_seconds ? ` (${formatTime(mention.timestamp_seconds)})` : "";
       return `
@@ -279,7 +285,7 @@ function renderListView() {
 
     const mentionsHtml = sortMentions(biz.mentions || []).map(mention => {
       const quotesHtml = (mention.quotes || [])
-        .map(q => `<div class="quote">"${escapeHtml(q)}"</div>`)
+        .map(q => `<div class="quote" ${quoteColorStyle(mention.sentiment)}>"${escapeHtml(q)}"</div>`)
         .join("");
       const timeLabel = mention.timestamp_seconds ? ` (${formatTime(mention.timestamp_seconds)})` : "";
       return `
@@ -468,7 +474,7 @@ async function openBusinessPanel(businessId, pinIndex) {
 
         // Quotes
         const quotesHtml = (mention.quotes || [])
-          .map(q => `<div class="quote">"${escapeHtml(q)}"</div>`)
+          .map(q => `<div class="quote" ${quoteColorStyle(mention.sentiment)}>"${escapeHtml(q)}"</div>`)
           .join("");
 
         // Timestamp link
