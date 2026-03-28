@@ -45,6 +45,25 @@ body {
   background: var(--color-surface);
 }
 
+.kofi-header-link {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.7;
+  transition: opacity 0.15s;
+  line-height: 0;
+}
+
+.kofi-header-link:hover {
+  opacity: 1;
+}
+
+.kofi-header-link img {
+  height: 28px;
+  width: auto;
+}
+
 .site-header h1 {
   font-family: var(--font-title);
   font-size: 36px;
@@ -970,22 +989,5 @@ select.filter-select:focus {
     bottom: 80px !important;
   }
 
-  /* Ko-fi button: move to top-left corner on mobile, scaled down 30% */
-  .floatingchat-container-wrap,
-  .floatingchat-container-wrap-mobi {
-    bottom: auto !important;
-    top: calc(16px + env(safe-area-inset-top, 0px)) !important;
-    transform: scale(0.7) !important;
-    transform-origin: top left !important;
-  }
 }
 
-/* ── Ko-fi floating chat: widen to fit custom button text ── */
-.floatingchat-container-wrap,
-.floatingchat-container-wrap-mobi {
-  max-width: 240px !important;
-}
-.floatingchat-container,
-.floatingchat-container-mobi {
-  width: 240px !important;
-}
