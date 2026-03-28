@@ -648,17 +648,19 @@ select.filter-select:focus {
 }
 
 .mention-card .video-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
   line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
 .mention-card .quote {
-  font-size: 13px;
-  color: var(--color-text-muted);
-  line-height: 1.6;
+  font-size: 14px;
+  color: var(--color-text);
+  line-height: 1.65;
   font-style: italic;
   padding-left: 10px;
   border-left: 2px solid var(--color-accent);
@@ -920,11 +922,11 @@ select.filter-select:focus {
   }
 
   .mention-card .video-title {
-    font-size: 14px;
+    font-size: 11px;
   }
 
   .mention-card .quote {
-    font-size: 14px;
+    font-size: 15px;
   }
 
   /* Navigation controls: move to top-right on mobile to avoid bottom sheet overlap */
