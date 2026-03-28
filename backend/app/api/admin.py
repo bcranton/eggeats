@@ -200,7 +200,7 @@ def create_virtual_city(
     _: AdminSession = Depends(get_admin_session),
 ):
     """
-    Creates the 'No Fixed Location' virtual city if it doesn't already exist.
+    Creates the 'Multiple Locations & Other' virtual city if it doesn't already exist.
     Virtual cities are shown as a list view on the frontend (no map).
     """
     existing = db.query(City).filter(City.is_virtual == True).first()  # noqa: E712
@@ -208,7 +208,7 @@ def create_virtual_city(
         return {"city": {"id": existing.id, "name": existing.name}, "created": False}
 
     city = City(
-        name="No Fixed Location",
+        name="Multiple Locations & Other",
         country="–",
         search_keywords="",
         center_lat=0.0,
