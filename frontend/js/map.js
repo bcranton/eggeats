@@ -16,6 +16,37 @@ function sortMentions(mentions) {
   return [...mentions].sort((a, b) => titleDate(b.video_title) - titleDate(a.video_title));
 }
 
+// Build a YouTube embed URL from a watch URL (https://youtube.com/watch?v=ID&t=Ns)
+function ytEmbedUrl(watchUrl) {
+  try {
+    const u = new URL(watchUrl);
+    const videoId = u.searchParams.get("v");
+    if (!videoId) return null;
+    const start = parseInt(u.searchParams.get("t") || "0", 10);
+    return `https://www.youtube.com/embed/${videoId}?start=${start}&autoplay=1`;
+  } catch {
+    return null;
+  }
+}
+
+// Toggle an inline YouTube embed below the clicked button
+function toggleYtEmbed(btn) {
+  const existing = btn.nextElementSibling;
+  if (existing && existing.classList.contains("yt-embed-wrap")) {
+    existing.remove();
+    btn.classList.remove("active");
+    return;
+  }
+  const embedUrl = ytEmbedUrl(btn.dataset.ytUrl);
+  if (!embedUrl) return;
+  const wrap = document.createElement("div");
+  wrap.className = "yt-embed-wrap";
+  wrap.innerHTML = `<iframe src="${embedUrl}" frameborder="0" allowfullscreen
+    allow="autoplay; encrypted-media" loading="lazy"></iframe>`;
+  btn.after(wrap);
+  btn.classList.add("active");
+}
+
 // CSS custom-property style string for the quote border colour
 function quoteColorStyle(sentiment) {
   const color = SENTIMENT_COLORS[sentiment] || SENTIMENT_COLORS.null;
@@ -151,7 +182,7 @@ function renderUnlocatedStrip() {
         <div class="mention-card" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--color-border);">
           <div class="video-title">${escapeHtml(mention.video_title)}</div>
           ${quotesHtml || `<div class="quote" style="opacity:0.5">No quotes extracted.</div>`}
-          <a class="watch-link" href="${mention.youtube_url}" target="_blank" rel="noopener">▶ Watch on YouTube${timeLabel}</a>
+          <button class="watch-link" data-yt-url="${mention.youtube_url}" onclick="toggleYtEmbed(this)">▶ Watch on YouTube${timeLabel}</button>
         </div>`;
     }).join("");
 
@@ -295,7 +326,7 @@ function renderListView() {
         <div class="mention-card" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--color-border);">
           <div class="video-title">${escapeHtml(mention.video_title)}</div>
           ${quotesHtml || `<div class="quote" style="opacity:0.5">No quotes extracted.</div>`}
-          <a class="watch-link" href="${mention.youtube_url}" target="_blank" rel="noopener">▶ Watch on YouTube${timeLabel}</a>
+          <button class="watch-link" data-yt-url="${mention.youtube_url}" onclick="toggleYtEmbed(this)">▶ Watch on YouTube${timeLabel}</button>
         </div>`;
     }).join("");
 
@@ -543,9 +574,7 @@ async function openBusinessPanel(businessId, pinIndex) {
           ${sentimentBadge}
           <div class="video-title">${escapeHtml(mention.video_title)}</div>
           ${quotesHtml || `<div class="quote" style="opacity:0.5">No direct quotes extracted.</div>`}
-          <a class="watch-link" href="${mention.youtube_url}" target="_blank" rel="noopener">
-            ▶ Watch on YouTube${timeLabel}
-          </a>
+          <button class="watch-link" data-yt-url="${mention.youtube_url}" onclick="toggleYtEmbed(this)">▶ Watch on YouTube${timeLabel}</button>
         `;
         body.appendChild(card);
       });

@@ -673,14 +673,41 @@ select.filter-select:focus {
   align-items: center;
   gap: 6px;
   margin-top: 8px;
+  padding: 4px 10px;
   font-size: 12px;
-  color: var(--color-accent);
-  text-decoration: none;
   font-weight: 500;
+  font-family: var(--font);
+  color: var(--color-accent);
+  background: transparent;
+  border: 1px solid var(--color-accent);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }
 
 .mention-card .watch-link:hover {
-  text-decoration: underline;
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.mention-card .watch-link.active {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.yt-embed-wrap {
+  margin-top: 10px;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #000;
+}
+
+.yt-embed-wrap iframe {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .info-panel-address {
