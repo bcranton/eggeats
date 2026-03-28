@@ -120,33 +120,6 @@ body {
   flex-shrink: 0;
 }
 
-/* ── Right: Stats Panel ──────────────────────────────── */
-.stats-panel {
-  width: 160px;
-  background: var(--color-surface);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  overflow-y: auto;
-  flex-shrink: 0;
-}
-
-.stats-block {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-
-.panel-heading {
-  font-family: var(--font-heading);
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--color-text-muted);
-}
 
 /* ── Center: City bar + Map ──────────────────────────── */
 .map-wrapper {
@@ -482,29 +455,6 @@ select.filter-select:focus {
   color: var(--color-text);
 }
 
-/* ── Stats ───────────────────────────────────────────── */
-.stats-inline {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  flex-wrap: wrap;
-}
-
-.stats-inline .num {
-  font-family: var(--font-title);
-  font-size: 18px;
-  color: var(--color-accent);
-}
-
-.stats-inline .label {
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-
-.stat-sep {
-  color: var(--color-border);
-  margin: 0 4px;
-}
 
 /* ── Business Info Panel (overlays the map) ──────────── */
 .info-panel {
@@ -889,10 +839,6 @@ select.filter-select:focus {
     display: flex !important;
   }
 
-  /* Hide right stats panel; filter panel becomes a drawer */
-  .stats-panel {
-    display: none;
-  }
 
   /* Map: full width, no horizontal padding, slightly shorter so drawer handle is visible */
   .map-wrapper {

@@ -117,14 +117,6 @@ function renderUnlocatedStrip() {
   if (!activeFilters.showClosed) items = items.filter(b => !b.is_closed);
   items = [...items].sort((a, b) => a.name.localeCompare(b.name));
 
-  const statBlock = document.getElementById("no-location-stat");
-  if (items.length > 0) {
-    document.getElementById("stat-no-location").textContent = items.length;
-    statBlock.style.display = "";
-  } else {
-    statBlock.style.display = "none";
-  }
-
   if (!items.length) {
     drawer.style.display = "none";
     return;
@@ -274,7 +266,6 @@ async function loadListView() {
 function showListView() {
   document.getElementById("map").style.display = "none";
   document.getElementById("list-view").style.display = "flex";
-  document.getElementById("no-location-stat").style.display = "none";
   document.getElementById("unlocated-drawer").style.display = "none";
 }
 
@@ -500,14 +491,6 @@ function addMarkers(visible) {
     currentMarkers.push(marker);
   });
 
-  // Update stats — include no-location businesses so counts match the dropdown
-  const noLocCount = noLocationData ? noLocationData.length : 0;
-  document.getElementById("stat-places").textContent = visible.length + noLocCount;
-  const mapMentions = visible.reduce((sum, p) => sum + p.mention_count, 0);
-  const noLocMentions = (noLocationData || []).reduce(
-    (sum, b) => sum + (b.mentions ? b.mentions.length : 0), 0
-  );
-  document.getElementById("stat-mentions").textContent = mapMentions + noLocMentions;
 
   document.getElementById("loading").classList.add("hidden");
 }
