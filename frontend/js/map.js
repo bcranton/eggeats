@@ -16,6 +16,28 @@ function sortMentions(mentions) {
   return [...mentions].sort((a, b) => titleDate(b.video_title) - titleDate(a.video_title));
 }
 
+// Compute API date_from / date_to strings from activeFilters date settings
+function activeDateRange() {
+  const today = new Date();
+  const fmt = d => d.toISOString().slice(0, 10); // YYYY-MM-DD
+  if (activeFilters.datePreset === "week") {
+    const d = new Date(today); d.setDate(d.getDate() - 7);
+    return { date_from: fmt(d), date_to: fmt(today) };
+  }
+  if (activeFilters.datePreset === "month") {
+    const d = new Date(today); d.setMonth(d.getMonth() - 1);
+    return { date_from: fmt(d), date_to: fmt(today) };
+  }
+  if (activeFilters.datePreset === "year") {
+    const d = new Date(today); d.setFullYear(d.getFullYear() - 1);
+    return { date_from: fmt(d), date_to: fmt(today) };
+  }
+  if (activeFilters.datePreset === "custom") {
+    return { date_from: activeFilters.dateFrom, date_to: activeFilters.dateTo };
+  }
+  return { date_from: "", date_to: "" };
+}
+
 // Build a YouTube embed URL from a watch URL (https://youtube.com/watch?v=ID&t=Ns)
 function ytEmbedUrl(watchUrl) {
   try {
@@ -64,6 +86,10 @@ let activeFilters = {
   category: "",
   sentiment: "",
   showClosed: true,
+  search: "",
+  datePreset: "",   // "week" | "month" | "year" | "custom" | ""
+  dateFrom: "",     // YYYY-MM-DD (custom range)
+  dateTo: "",       // YYYY-MM-DD (custom range)
 };
 let listViewData = []; // businesses shown in list mode
 let visiblePins = []; // currently rendered map pins (filtered)
@@ -105,6 +131,9 @@ let noLocationData = [];
 async function loadNoLocationData() {
   const params = new URLSearchParams();
   if (activeFilters.city) params.set("city_id", activeFilters.city);
+  const { date_from, date_to } = activeDateRange();
+  if (date_from) params.set("date_from", date_from);
+  if (date_to)   params.set("date_to", date_to);
   noLocationData = await fetch(`${API}/api/no-location?${params}`).then(r => r.json());
   renderUnlocatedStrip();
 }
@@ -115,6 +144,10 @@ function renderUnlocatedStrip() {
 
   let items = noLocationData;
   if (!activeFilters.showClosed) items = items.filter(b => !b.is_closed);
+  if (activeFilters.search) {
+    const q = activeFilters.search.toLowerCase();
+    items = items.filter(b => b.name.toLowerCase().includes(q));
+  }
   items = [...items].sort((a, b) => a.name.localeCompare(b.name));
 
   if (!items.length) {
@@ -232,6 +265,9 @@ async function loadMapData() {
   if (activeFilters.city)      params.set("city_id", activeFilters.city);
   if (activeFilters.category)  params.set("category", activeFilters.category);
   if (activeFilters.sentiment) params.set("sentiment", activeFilters.sentiment);
+  const { date_from, date_to } = activeDateRange();
+  if (date_from) params.set("date_from", date_from);
+  if (date_to)   params.set("date_to", date_to);
 
   const [data] = await Promise.all([
     fetch(`${API}/api/map-data?${params}`).then(r => r.json()),
@@ -277,12 +313,15 @@ function showMapView() {
 function renderListView() {
   const container = document.getElementById("list-view-body");
 
-  // Apply category and sentiment filters client-side
   let items = listViewData;
   if (!activeFilters.showClosed) items = items.filter(b => !b.is_closed);
   if (activeFilters.category)   items = items.filter(b => b.category === activeFilters.category);
-  items = [...items].sort((a, b) => a.name.localeCompare(b.name));
   if (activeFilters.sentiment)  items = items.filter(b => b.sentiment_summary === activeFilters.sentiment);
+  if (activeFilters.search) {
+    const q = activeFilters.search.toLowerCase();
+    items = items.filter(b => b.name.toLowerCase().includes(q));
+  }
+  items = [...items].sort((a, b) => a.name.localeCompare(b.name));
 
   // Update stats
   document.getElementById("stat-places").textContent = items.length;
@@ -338,8 +377,11 @@ function renderListView() {
 // ──────────────────────────────────────────────────────────
 
 function renderMap(pins) {
-  // Filter closed if needed
-  const visible = activeFilters.showClosed ? pins : pins.filter(p => !p.is_closed);
+  let visible = activeFilters.showClosed ? pins : pins.filter(p => !p.is_closed);
+  if (activeFilters.search) {
+    const q = activeFilters.search.toLowerCase();
+    visible = visible.filter(p => p.name.toLowerCase().includes(q));
+  }
 
 // Return the IQR-based inlier range for an array of numbers.
 function iqrRange(values) {
@@ -676,6 +718,54 @@ document.querySelectorAll(".sentiment-btn").forEach(btn => {
 document.getElementById("filter-show-closed").addEventListener("change", e => {
   activeFilters.showClosed = e.target.checked;
   if (isListViewActive()) { renderListView(); } else { renderMap(allPins); renderUnlocatedStrip(); }
+});
+
+// Search — client-side, no server reload needed
+let _searchTimer = null;
+document.getElementById("filter-search").addEventListener("input", e => {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => {
+    activeFilters.search = e.target.value.trim();
+    if (isListViewActive()) { renderListView(); } else { renderMap(allPins); renderUnlocatedStrip(); }
+  }, 200);
+});
+
+// Date preset buttons
+document.querySelectorAll(".date-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const preset = btn.dataset.preset;
+    const customRange = document.getElementById("date-custom-range");
+    if (activeFilters.datePreset === preset) {
+      // deselect
+      activeFilters.datePreset = "";
+      activeFilters.dateFrom = "";
+      activeFilters.dateTo = "";
+      btn.classList.remove("active");
+      customRange.style.display = "none";
+    } else {
+      document.querySelectorAll(".date-btn").forEach(b => b.classList.remove("active"));
+      activeFilters.datePreset = preset;
+      btn.classList.add("active");
+      customRange.style.display = preset === "custom" ? "flex" : "none";
+      if (preset !== "custom") {
+        activeFilters.dateFrom = "";
+        activeFilters.dateTo = "";
+      }
+    }
+    if (preset !== "custom" || activeFilters.datePreset === "") {
+      if (isListViewActive()) { loadListView(); } else { loadMapData(); }
+    }
+  });
+});
+
+// Custom date range inputs
+document.getElementById("date-from").addEventListener("change", e => {
+  activeFilters.dateFrom = e.target.value;
+  if (isListViewActive()) { loadListView(); } else { loadMapData(); }
+});
+document.getElementById("date-to").addEventListener("change", e => {
+  activeFilters.dateTo = e.target.value;
+  if (isListViewActive()) { loadListView(); } else { loadMapData(); }
 });
 
 function isListViewActive() {

@@ -4,9 +4,11 @@ No authentication required.
 """
 import json
 from typing import Optional
+from datetime import datetime, timedelta, timezone
 
 import json as _json
 from fastapi import APIRouter, Depends, Query, Response
+from sqlalchemy import exists, and_, select
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 
@@ -162,24 +164,44 @@ def get_cities(response: Response, db: Session = Depends(get_db)):
     return result
 
 
+def _apply_date_filter(query, date_from: Optional[str], date_to: Optional[str]):
+    """Filter businesses to those with at least one mention in the date range."""
+    video_conditions = []
+    if date_from:
+        video_conditions.append(Video.published_at >= datetime.fromisoformat(date_from))
+    if date_to:
+        dt_to = datetime.fromisoformat(date_to).replace(hour=23, minute=59, second=59)
+        video_conditions.append(Video.published_at <= dt_to)
+    if not video_conditions:
+        return query
+    video_ids = select(Video.id).where(and_(*video_conditions)).scalar_subquery()
+    has_mention = exists(
+        select(Mention.id).where(
+            Mention.business_id == Business.id,
+            Mention.video_id.in_(video_ids),
+        )
+    )
+    return query.filter(has_mention)
+
+
 @router.get("/map-data", response_model=list[BusinessMapPin])
 def get_map_data(
     response: Response,
     city_id: Optional[int] = Query(None),
     category: Optional[str] = Query(None),
     sentiment: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     """
     Returns all approved businesses with coordinates for map rendering.
-    Filtered by city, category, and/or sentiment.
+    Filtered by city, category, sentiment, and/or date range.
     Only includes businesses that have coordinates.
     """
     response.headers["Cache-Control"] = MAP_DATA_CACHE
 
-    # Server-side cache: key includes filter params so each combination is cached
-    # independently. Different users with the same filters share one DB query.
-    cache_key = f"map-data:{city_id}:{category}:{sentiment}"
+    cache_key = f"map-data:{city_id}:{category}:{sentiment}:{date_from}:{date_to}"
     cached = cache_get(cache_key)
     if cached is not None:
         return cached
@@ -198,6 +220,8 @@ def get_map_data(
         query = query.filter(Business.city_id == city_id)
     if category:
         query = query.filter(Business.category == category)
+    if date_from or date_to:
+        query = _apply_date_filter(query, date_from, date_to)
 
     businesses = query.all()
 
@@ -307,6 +331,8 @@ class NoLocationBusiness(BaseModel):
 def get_no_location_businesses(
     response: Response,
     city_id: Optional[int] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     """
@@ -315,7 +341,7 @@ def get_no_location_businesses(
     """
     response.headers["Cache-Control"] = MAP_DATA_CACHE
 
-    cache_key = f"no-location:{city_id}"
+    cache_key = f"no-location:{city_id}:{date_from}:{date_to}"
     cached = cache_get(cache_key)
     if cached is not None:
         return cached
@@ -334,6 +360,8 @@ def get_no_location_businesses(
 
     if city_id:
         query = query.filter(Business.city_id == city_id)
+    if date_from or date_to:
+        query = _apply_date_filter(query, date_from, date_to)
 
     businesses = query.all()
 

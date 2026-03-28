@@ -47,6 +47,11 @@
     <h3 class="panel-heading">Filters</h3>
 
     <div class="filter-group">
+      <label>Search</label>
+      <input class="filter-input" type="search" id="filter-search" placeholder="Place name…" autocomplete="off" />
+    </div>
+
+    <div class="filter-group">
       <label>Category</label>
       <select class="filter-select" id="filter-category">
         <option value="">All</option>
@@ -62,12 +67,27 @@
     </div>
 
     <div class="filter-group">
-      <label>NL's Vibe</label>
+      <label>NL's Review</label>
       <div class="sentiment-buttons">
         <button class="sentiment-btn" data-sentiment="positive">👍 Positive</button>
         <button class="sentiment-btn" data-sentiment="negative">👎 Negative</button>
         <button class="sentiment-btn" data-sentiment="neutral">😐 Neutral</button>
         <button class="sentiment-btn" data-sentiment="mixed">🤔 Mixed</button>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label>Date Visited</label>
+      <div class="date-preset-buttons">
+        <button class="date-btn" data-preset="week">Last Week</button>
+        <button class="date-btn" data-preset="month">Last Month</button>
+        <button class="date-btn" data-preset="year">Last 12 Months</button>
+        <button class="date-btn" data-preset="custom">Custom…</button>
+      </div>
+      <div class="date-custom-range" id="date-custom-range" style="display:none;">
+        <input type="date" id="date-from" class="filter-input" />
+        <span class="date-range-sep">to</span>
+        <input type="date" id="date-to" class="filter-input" />
       </div>
     </div>
 
