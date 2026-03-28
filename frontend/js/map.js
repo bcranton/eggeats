@@ -4,6 +4,18 @@
 
 const API = "";  // same-origin
 
+// Extract [MM/DD/YYYY] from a video title; returns a comparable number (YYYYMMDD) or 0
+function titleDate(title) {
+  const m = (title || "").match(/\[(\d{2})\/(\d{2})\/(\d{4})\]/);
+  if (!m) return 0;
+  return parseInt(m[3] + m[1] + m[2], 10); // YYYYMMDD
+}
+
+// Sort mentions newest-first by date embedded in video title
+function sortMentions(mentions) {
+  return [...mentions].sort((a, b) => titleDate(b.video_title) - titleDate(a.video_title));
+}
+
 // State
 let map = null;
 let allPins = [];
@@ -122,7 +134,7 @@ function renderUnlocatedStrip() {
       biz.is_closed ? `<span class="badge badge-closed">Closed</span>` : "",
     ].filter(Boolean).join("");
 
-    const mentionsHtml = (biz.mentions || []).map(mention => {
+    const mentionsHtml = sortMentions(biz.mentions || []).map(mention => {
       const quotesHtml = (mention.quotes || [])
         .map(q => `<div class="quote">"${escapeHtml(q)}"</div>`)
         .join("");
@@ -265,7 +277,7 @@ function renderListView() {
       biz.is_closed ? `<span class="badge badge-closed">Closed</span>` : "",
     ].filter(Boolean).join("");
 
-    const mentionsHtml = (biz.mentions || []).map(mention => {
+    const mentionsHtml = sortMentions(biz.mentions || []).map(mention => {
       const quotesHtml = (mention.quotes || [])
         .map(q => `<div class="quote">"${escapeHtml(q)}"</div>`)
         .join("");
@@ -445,7 +457,7 @@ async function openBusinessPanel(businessId, pinIndex) {
     if (!biz.mentions || biz.mentions.length === 0) {
       body.innerHTML = `<p style="color:var(--color-text-muted);padding:16px 0;font-size:13px;">No mentions found.</p>`;
     } else {
-      biz.mentions.forEach(mention => {
+      sortMentions(biz.mentions).forEach(mention => {
         const card = document.createElement("div");
         card.className = "mention-card";
 
