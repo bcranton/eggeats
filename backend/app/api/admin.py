@@ -669,6 +669,15 @@ def update_business(
     if request.admin_notes is not None:
         business.admin_notes = request.admin_notes
 
+    # Enforce: virtual cities must never have location data
+    effective_city_id = request.city_id if request.city_id is not None else business.city_id
+    effective_city = db.query(City).filter(City.id == effective_city_id).first()
+    if effective_city and effective_city.is_virtual:
+        business.address = None
+        business.lat = None
+        business.lng = None
+        business.extra_addresses_json = None
+
     business.updated_at = datetime.now(timezone.utc)
     db.commit()
 
