@@ -46,11 +46,9 @@ body {
 }
 
 .kofi-header-link {
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  opacity: 0.7;
+  display: inline-block;
+  margin-top: 10px;
+  opacity: 0.8;
   transition: opacity 0.15s;
   line-height: 0;
 }
@@ -859,6 +857,10 @@ select.filter-select:focus {
 
   .site-header h1 {
     font-size: 24px;
+  }
+
+  .kofi-header-link {
+    display: none;
   }
 
   .site-header .subtitle {
