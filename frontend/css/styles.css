@@ -841,10 +841,14 @@ select.filter-select:focus {
     display: none;
   }
 
-  /* Map: full width, no horizontal padding */
+  /* Map: full width, no horizontal padding, slightly shorter so drawer handle is visible */
   .map-wrapper {
     padding: 0;
     width: 100%;
+  }
+
+  #map {
+    max-height: 62vh;
   }
 
   /* Filter panel → fixed bottom drawer */
