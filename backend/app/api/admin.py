@@ -400,6 +400,39 @@ def reprocess_video(
     return {"message": f"Video {video_id} queued for reprocessing"}
 
 
+@router.post("/videos/{video_id}/ignore")
+def ignore_video(
+    video_id: int,
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """Marks a video as ignored so the pipeline will never process it."""
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    video.processing_status = ProcessingStatus.ignored
+    db.commit()
+    return {"message": f"Video {video_id} marked as ignored"}
+
+
+@router.post("/videos/{video_id}/unignore")
+def unignore_video(
+    video_id: int,
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """Resets an ignored video to pending so the pipeline will process it."""
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    video.processing_status = ProcessingStatus.pending
+    video.error_message = None
+    db.commit()
+    return {"message": f"Video {video_id} reset to pending"}
+
+
 @router.delete("/videos/{video_id}/extractions")
 def delete_video_extractions(
     video_id: int,

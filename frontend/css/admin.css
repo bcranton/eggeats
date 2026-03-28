@@ -269,6 +269,7 @@ tbody td { padding: 12px 14px; vertical-align: middle; }
 .chip-completed  { background: rgba(76,175,80,0.15); color: var(--color-positive); }
 .chip-failed     { background: rgba(244,67,54,0.15); color: var(--color-negative); }
 .chip-skipped    { background: rgba(158,158,158,0.15); color: var(--color-text-muted); }
+.chip-ignored    { background: rgba(100,100,100,0.15); color: #777; }
 .chip-approved   { background: rgba(76,175,80,0.15); color: var(--color-positive); }
 .chip-pending_review { background: rgba(255,152,0,0.15); color: var(--color-warning); }
 .chip-rejected   { background: rgba(244,67,54,0.15); color: var(--color-negative); }

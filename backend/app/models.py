@@ -21,6 +21,7 @@ class ProcessingStatus(str, enum.Enum):
     completed = "completed"
     failed = "failed"
     skipped = "skipped"
+    ignored = "ignored"
 
 
 class ReviewStatus(str, enum.Enum):

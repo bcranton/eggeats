@@ -258,7 +258,11 @@ function renderVideos() {
       <td>${v.mention_count}</td>
       <td>${errorHtml}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" onclick="reprocessVideo(${v.id}, this)">↻ Reprocess</button>
+        ${v.processing_status === "ignored"
+          ? `<button class="btn btn-secondary btn-sm" onclick="unignoreVideo(${v.id}, this)">↩ Unignore</button>`
+          : `<button class="btn btn-secondary btn-sm" onclick="reprocessVideo(${v.id}, this)">↻ Reprocess</button>
+             <button class="btn btn-secondary btn-sm" onclick="ignoreVideo(${v.id}, this)" title="Prevent pipeline from ever processing this video">⊘ Ignore</button>`
+        }
         ${v.mention_count > 0 ? `<button class="btn btn-danger btn-sm" onclick="clearExtractions(${v.id}, this)">✕ Clear</button>` : ""}
       </td>
     `;
@@ -301,6 +305,74 @@ async function reprocessVideo(videoId, btn) {
     toast(`Failed: ${e.message}`, "error");
     btn.disabled = false;
     btn.textContent = "↻ Reprocess";
+  }
+}
+
+async function ignoreVideo(videoId, btn) {
+  btn.disabled = true;
+  btn.textContent = "⊘ Ignoring…";
+  try {
+    await apiFetch(`/api/admin/videos/${videoId}/ignore`, { method: "POST" });
+    const row = btn.closest("tr");
+    const chipCell = row.querySelector(".chip");
+    if (chipCell) {
+      chipCell.className = "chip chip-ignored";
+      chipCell.textContent = "ignored";
+    }
+    // Replace action buttons: show only Unignore (and keep Clear if present)
+    const actionsCell = row.querySelector("td:last-child");
+    if (actionsCell) {
+      const clearBtn = actionsCell.querySelector(".btn-danger");
+      actionsCell.innerHTML = "";
+      const unignoreBtn = document.createElement("button");
+      unignoreBtn.className = "btn btn-secondary btn-sm";
+      unignoreBtn.textContent = "↩ Unignore";
+      unignoreBtn.onclick = () => unignoreVideo(videoId, unignoreBtn);
+      actionsCell.appendChild(unignoreBtn);
+      if (clearBtn) actionsCell.appendChild(clearBtn);
+    }
+    toast("Video marked as ignored", "success");
+  } catch (e) {
+    toast(`Failed: ${e.message}`, "error");
+    btn.disabled = false;
+    btn.textContent = "⊘ Ignore";
+  }
+}
+
+async function unignoreVideo(videoId, btn) {
+  btn.disabled = true;
+  btn.textContent = "↩ Unignoring…";
+  try {
+    await apiFetch(`/api/admin/videos/${videoId}/unignore`, { method: "POST" });
+    const row = btn.closest("tr");
+    const chipCell = row.querySelector(".chip");
+    if (chipCell) {
+      chipCell.className = "chip chip-pending";
+      chipCell.textContent = "pending";
+    }
+    // Replace action buttons: show Reprocess + Ignore (and keep Clear if present)
+    const actionsCell = row.querySelector("td:last-child");
+    if (actionsCell) {
+      const clearBtn = actionsCell.querySelector(".btn-danger");
+      actionsCell.innerHTML = "";
+      const reprocessBtn = document.createElement("button");
+      reprocessBtn.className = "btn btn-secondary btn-sm";
+      reprocessBtn.textContent = "↻ Reprocess";
+      reprocessBtn.onclick = () => reprocessVideo(videoId, reprocessBtn);
+      const ignoreBtn = document.createElement("button");
+      ignoreBtn.className = "btn btn-secondary btn-sm";
+      ignoreBtn.title = "Prevent pipeline from ever processing this video";
+      ignoreBtn.textContent = "⊘ Ignore";
+      ignoreBtn.onclick = () => ignoreVideo(videoId, ignoreBtn);
+      actionsCell.appendChild(reprocessBtn);
+      actionsCell.appendChild(ignoreBtn);
+      if (clearBtn) actionsCell.appendChild(clearBtn);
+    }
+    toast("Video reset to pending", "success");
+  } catch (e) {
+    toast(`Failed: ${e.message}`, "error");
+    btn.disabled = false;
+    btn.textContent = "↩ Unignore";
   }
 }
 
