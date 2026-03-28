@@ -599,6 +599,17 @@ function renderMentions(mentions) {
   });
 }
 
+function removeAddressRow(btn) {
+  const container = document.getElementById("edit-biz-addresses");
+  const row = btn.closest("div");
+  if (container.children.length === 1) {
+    // Last row — clear the input instead of removing so the user can see it's blank
+    row.querySelector("input").value = "";
+  } else {
+    row.remove();
+  }
+}
+
 function addAddressRow(value = "") {
   const container = document.getElementById("edit-biz-addresses");
   const row = document.createElement("div");
@@ -606,7 +617,7 @@ function addAddressRow(value = "") {
   row.innerHTML = `
     <input type="text" value="${esc(value)}" placeholder="e.g. 123 Main St, Vancouver, BC"
       style="flex:1;padding:8px;background:var(--color-surface-2);border:1px solid var(--color-border);border-radius:var(--radius);color:var(--color-text);font-size:13px;" />
-    <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('div').remove()">✕</button>
+    <button type="button" class="btn btn-danger btn-sm" onclick="removeAddressRow(this)">✕</button>
   `;
   container.appendChild(row);
   if (!value) row.querySelector("input").focus();
@@ -684,7 +695,7 @@ document.getElementById("edit-save").addEventListener("click", async () => {
     city_id: parseInt(document.getElementById("edit-biz-city").value) || null,
     category: document.getElementById("edit-biz-category").value,
     review_status: document.getElementById("edit-biz-review-status").value,
-    address: allAddrs[0] || null,
+    address: allAddrs[0] ?? "",  // "" tells backend to clear; null would be ignored
     extra_addresses: allAddrs.slice(1),
     admin_notes: document.getElementById("edit-biz-notes").value.trim() || null,
     is_closed: document.getElementById("edit-biz-closed").checked,
