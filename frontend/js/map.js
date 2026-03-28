@@ -364,6 +364,9 @@ function addMarkers(visible) {
     );
   }
 
+  // Sort west → east so the cycle arrows feel geographic
+  visiblePins.sort((a, b) => a.lng - b.lng);
+
   // Re-assign stable indices based on the filtered list so clicks and
   // the cycle counter stay in sync.
   const pinIndexMap = new Map(visiblePins.map((p, i) => [p.id, i]));
