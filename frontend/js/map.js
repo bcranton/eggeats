@@ -83,6 +83,7 @@ function renderUnlocatedStrip() {
 
   let items = noLocationData;
   if (!activeFilters.showClosed) items = items.filter(b => !b.is_closed);
+  items = [...items].sort((a, b) => a.name.localeCompare(b.name));
 
   const statBlock = document.getElementById("no-location-stat");
   if (items.length > 0) {
@@ -257,6 +258,7 @@ function renderListView() {
   let items = listViewData;
   if (!activeFilters.showClosed) items = items.filter(b => !b.is_closed);
   if (activeFilters.category)   items = items.filter(b => b.category === activeFilters.category);
+  items = [...items].sort((a, b) => a.name.localeCompare(b.name));
   if (activeFilters.sentiment)  items = items.filter(b => b.sentiment_summary === activeFilters.sentiment);
 
   // Update stats
