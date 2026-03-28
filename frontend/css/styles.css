@@ -969,6 +969,11 @@ select.filter-select:focus {
   .mapboxgl-ctrl-bottom-right {
     bottom: 80px !important;
   }
+
+  /* Ko-fi button: push above the drawer handle (44px handle + 12px margins + safe area + breathing room) */
+  .floatingchat-container-wrap {
+    bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
+  }
 }
 
 /* ── Ko-fi floating chat: widen to fit custom button text ── */
