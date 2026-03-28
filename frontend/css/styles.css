@@ -45,12 +45,17 @@ body {
   background: var(--color-surface);
 }
 
+.header-title-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .kofi-header-link {
-  display: inline-block;
-  margin-top: 10px;
+  display: inline-flex;
+  line-height: 0;
   opacity: 0.8;
   transition: opacity 0.15s;
-  line-height: 0;
 }
 
 .kofi-header-link:hover {
@@ -58,7 +63,7 @@ body {
 }
 
 .kofi-header-link img {
-  height: 36px;
+  height: 32px;
   width: auto;
 }
 
