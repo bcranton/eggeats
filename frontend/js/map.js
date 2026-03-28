@@ -318,7 +318,27 @@ function renderMap(pins) {
   // Filter closed if needed
   const visible = activeFilters.showClosed ? pins : pins.filter(p => !p.is_closed);
 
-  // Init map on first render
+// Fit the map to show all currently visible pins, with padding so pins
+// aren't hidden behind the side panels. Falls back to city centre if no pins.
+function fitMapToPins() {
+  if (!map) return;
+  if (visiblePins.length === 0) return;
+
+  if (visiblePins.length === 1) {
+    map.flyTo({ center: [visiblePins[0].lng, visiblePins[0].lat], zoom: 14, duration: 800 });
+    return;
+  }
+
+  const lngs = visiblePins.map(p => p.lng);
+  const lats = visiblePins.map(p => p.lat);
+  const bounds = [
+    [Math.min(...lngs), Math.min(...lats)], // SW
+    [Math.max(...lngs), Math.max(...lats)], // NE
+  ];
+  map.fitBounds(bounds, { padding: 60, duration: 800, maxZoom: 15 });
+}
+
+// Init map on first render
   if (!map) {
     const defaultCity = citiesById[activeFilters.city];
     const center = defaultCity
@@ -337,11 +357,12 @@ function renderMap(pins) {
     map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
 
     // Wait for map to load before adding markers
-    map.on("load", () => addMarkers(visible));
+    map.on("load", () => { addMarkers(visible); fitMapToPins(); });
     return;
   }
 
   addMarkers(visible);
+  fitMapToPins();
 }
 
 function addMarkers(visible) {
@@ -560,15 +581,7 @@ document.getElementById("filter-city").addEventListener("change", e => {
   if (city && city.is_virtual) {
     loadListView();
   } else {
-    loadMapData();
-    // Fly to the selected city
-    if (activeFilters.city && map && city) {
-      map.flyTo({
-        center: [city.center_lng, city.center_lat],
-        zoom: city.default_zoom,
-        duration: 1200,
-      });
-    }
+    loadMapData(); // fitMapToPins() is called inside after markers are placed
   }
 });
 
