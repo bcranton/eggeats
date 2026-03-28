@@ -971,15 +971,18 @@ select.filter-select:focus {
   }
 
   /* Ko-fi button: push above the drawer handle (44px handle + 12px margins + safe area + breathing room) */
-  .floatingchat-container-wrap {
+  .floatingchat-container-wrap,
+  .floatingchat-container-wrap-mobi {
     bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
 /* ── Ko-fi floating chat: widen to fit custom button text ── */
-.floatingchat-container-wrap {
+.floatingchat-container-wrap,
+.floatingchat-container-wrap-mobi {
   max-width: 240px !important;
 }
-.floatingchat-container {
+.floatingchat-container,
+.floatingchat-container-mobi {
   width: 240px !important;
 }
