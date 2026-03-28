@@ -318,8 +318,18 @@ function renderMap(pins) {
   // Filter closed if needed
   const visible = activeFilters.showClosed ? pins : pins.filter(p => !p.is_closed);
 
+// Return the IQR-based inlier range for an array of numbers.
+function iqrRange(values) {
+  const s = [...values].sort((a, b) => a - b);
+  const q1 = s[Math.floor(s.length * 0.25)];
+  const q3 = s[Math.floor(s.length * 0.75)];
+  const iqr = q3 - q1;
+  return { lo: q1 - 1.5 * iqr, hi: q3 + 1.5 * iqr };
+}
+
 // Fit the map to show all currently visible pins, with padding so pins
-// aren't hidden behind the side panels. Falls back to city centre if no pins.
+// aren't hidden behind the side panels. Uses IQR outlier removal for
+// the bounds calc so a single far-away pin doesn't zoom the map way out.
 function fitMapToPins() {
   if (!map) return;
   if (visiblePins.length === 0) return;
@@ -329,8 +339,24 @@ function fitMapToPins() {
     return;
   }
 
-  const lngs = visiblePins.map(p => p.lng);
-  const lats = visiblePins.map(p => p.lat);
+  // Try to exclude outliers from the bounds calculation (markers still render)
+  let pins = visiblePins;
+  if (pins.length >= 4) {
+    const lngR = iqrRange(pins.map(p => p.lng));
+    const latR = iqrRange(pins.map(p => p.lat));
+    const inliers = pins.filter(p =>
+      p.lng >= lngR.lo && p.lng <= lngR.hi &&
+      p.lat >= latR.lo && p.lat <= latR.hi
+    );
+    // Only use the filtered set if it actually removed something and
+    // kept at least half the pins (avoid over-filtering small datasets)
+    if (inliers.length < pins.length && inliers.length >= Math.ceil(pins.length / 2)) {
+      pins = inliers;
+    }
+  }
+
+  const lngs = pins.map(p => p.lng);
+  const lats = pins.map(p => p.lat);
   const bounds = [
     [Math.min(...lngs), Math.min(...lats)], // SW
     [Math.max(...lngs), Math.max(...lats)], // NE
