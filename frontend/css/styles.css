@@ -976,7 +976,7 @@ select.filter-select:focus {
   .floatingchat-container-wrap-mobi {
     bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
     transform: scale(0.7) !important;
-    transform-origin: bottom left !important;
+    transform-origin: top left !important;
   }
 }
 
