@@ -37,6 +37,7 @@ let activeFilters = {
 let listViewData = []; // businesses shown in list mode
 let visiblePins = []; // currently rendered map pins (filtered)
 let currentPinIndex = -1; // index into visiblePins for the open panel
+let activeMarkerCircle = null; // the circle element of the currently open pin
 
 // Sentiment → marker colour mapping
 const SENTIMENT_COLORS = {
@@ -449,7 +450,9 @@ function addMarkers(visible) {
     el.appendChild(circle);
 
     el.addEventListener("mouseenter", () => { circle.style.transform = "scale(1.3)"; });
-    el.addEventListener("mouseleave", () => { circle.style.transform = "scale(1)"; });
+    el.addEventListener("mouseleave", () => {
+      if (circle !== activeMarkerCircle) circle.style.transform = "scale(1)";
+    });
 
     const marker = new mapboxgl.Marker({ element: el })
       .setLngLat([pin.lng, pin.lat])
@@ -457,10 +460,12 @@ function addMarkers(visible) {
 
     el.addEventListener("click", (e) => {
       e.stopPropagation();
-      // Use the index from the geo-filtered visiblePins list
+      setActiveMarker(circle);
       openBusinessPanel(pin.id, pinIndexMap.get(pin.id) ?? -1);
     });
 
+    // Store circle on marker so navigateToPin can highlight it
+    marker._circle = circle;
     currentMarkers.push(marker);
   });
 
@@ -561,9 +566,27 @@ async function openBusinessPanel(businessId, pinIndex) {
   }
 }
 
+function setActiveMarker(circle) {
+  // Deactivate previous
+  if (activeMarkerCircle && activeMarkerCircle !== circle) {
+    activeMarkerCircle.style.transform = "scale(1)";
+    activeMarkerCircle.style.boxShadow = "0 2px 6px rgba(0,0,0,0.4)";
+    activeMarkerCircle.style.border = "2px solid #fff";
+    activeMarkerCircle.style.zIndex = "";
+  }
+  activeMarkerCircle = circle;
+  if (circle) {
+    circle.style.transform = "scale(1.5)";
+    circle.style.boxShadow = "0 0 0 3px #fff, 0 2px 8px rgba(0,0,0,0.6)";
+    circle.style.border = "2px solid #fff";
+    circle.style.zIndex = "1";
+  }
+}
+
 function closePanel() {
   document.getElementById("info-panel").classList.remove("open");
   currentPinIndex = -1;
+  setActiveMarker(null);
 }
 
 function updatePanelNav() {
@@ -587,9 +610,14 @@ function updatePanelNav() {
 function navigateToPin(index) {
   const total = visiblePins.length;
   if (!total) return;
-  // Wrap around
   const wrapped = ((index % total) + total) % total;
   const pin = visiblePins[wrapped];
+  // Highlight the marker for this pin
+  const marker = currentMarkers.find(m => {
+    const ll = m.getLngLat();
+    return ll.lng === pin.lng && ll.lat === pin.lat;
+  });
+  setActiveMarker(marker ? marker._circle : null);
   openBusinessPanel(pin.id, wrapped);
   map.easeTo({ center: [pin.lng, pin.lat], duration: 300 });
 }
