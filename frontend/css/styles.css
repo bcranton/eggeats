@@ -971,9 +971,12 @@ select.filter-select:focus {
   }
 
   /* Ko-fi button: push above the drawer handle (44px handle + 12px margins + safe area + breathing room) */
+  /* Scale down 30% anchored at bottom-left so position stays correct */
   .floatingchat-container-wrap,
   .floatingchat-container-wrap-mobi {
     bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
+    transform: scale(0.7) !important;
+    transform-origin: bottom left !important;
   }
 }
 
