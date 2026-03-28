@@ -970,3 +970,11 @@ select.filter-select:focus {
     bottom: 80px !important;
   }
 }
+
+/* ── Ko-fi floating chat: widen to fit custom button text ── */
+.floatingchat-container-wrap {
+  max-width: 240px !important;
+}
+.floatingchat-container {
+  width: 240px !important;
+}
