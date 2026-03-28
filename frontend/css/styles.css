@@ -45,14 +45,11 @@ body {
   background: var(--color-surface);
 }
 
-.header-title-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 16px;
-}
-
 .kofi-header-link {
-  display: inline-flex;
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
   line-height: 0;
   opacity: 0.8;
   transition: opacity 0.15s;
