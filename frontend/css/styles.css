@@ -188,6 +188,8 @@ body {
   position: relative;
   background: var(--color-surface);
   border-top: 2px solid var(--color-border);
+  /* Lift content above the browser's bottom UI chrome (iOS Safari bar, Android nav) */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .unlocated-drawer-handle {
