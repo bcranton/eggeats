@@ -748,10 +748,20 @@ select.filter-select:focus {
 }
 
 .info-panel-address {
-  padding: 12px 16px;
+  padding: 10px 16px 12px;
   border-top: 1px solid var(--color-border);
   font-size: 12px;
   color: var(--color-text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.address-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .info-panel-address a {
@@ -762,6 +772,7 @@ select.filter-select:focus {
 .info-panel-address a.street-view-link {
   color: #60a5fa;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .info-panel-address a.street-view-link:hover {

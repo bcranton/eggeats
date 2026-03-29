@@ -76,13 +76,20 @@ class BusinessMapPin(BaseModel):
         from_attributes = True
 
 
+class AddressLocation(BaseModel):
+    address: str
+    lat: Optional[float]
+    lng: Optional[float]
+
+
 class BusinessDetail(BaseModel):
     id: int
     name: str
     category: Optional[str]
     lat: Optional[float]
     lng: Optional[float]
-    addresses: list[str]  # primary address + any admin-added extras
+    addresses: list[str]  # kept for backwards compat
+    locations: list[AddressLocation]  # address + coords for each location
     website: Optional[str]
     is_closed: bool
     city: CitySchema
@@ -294,14 +301,18 @@ def get_business(request: Request, business_id: int, response: Response, db: Ses
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Business not found")
 
-    addresses = []
+    locations = []
     if business.address:
-        addresses.append(business.address)
+        locations.append(AddressLocation(address=business.address, lat=business.lat, lng=business.lng))
     if business.extra_addresses_json:
         try:
             for loc in _json.loads(business.extra_addresses_json):
                 if isinstance(loc, dict) and loc.get("address"):
-                    addresses.append(loc["address"])
+                    locations.append(AddressLocation(
+                        address=loc["address"],
+                        lat=loc.get("lat"),
+                        lng=loc.get("lng"),
+                    ))
         except (ValueError, TypeError):
             pass
 
@@ -311,7 +322,8 @@ def get_business(request: Request, business_id: int, response: Response, db: Ses
         category=business.category,
         lat=business.lat,
         lng=business.lng,
-        addresses=addresses,
+        addresses=[l.address for l in locations],
+        locations=locations,
         website=business.website,
         is_closed=business.is_closed,
         city=CitySchema.model_validate(business.city),

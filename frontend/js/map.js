@@ -607,16 +607,19 @@ async function openBusinessPanel(businessId, pinIndex) {
 
     // Address / website / street view
     const addressEl = document.getElementById("panel-address");
-    const parts = [];
-    if (biz.addresses && biz.addresses.length) {
-      parts.push(biz.addresses.map(a => escapeHtml(a)).join(" &bull; "));
+    const rows = [];
+    if (biz.locations && biz.locations.length) {
+      for (const loc of biz.locations) {
+        const svHtml = (loc.lat && loc.lng)
+          ? ` <a href="https://www.google.com/maps?q=&layer=c&cbll=${loc.lat},${loc.lng}" target="_blank" rel="noopener" class="street-view-link">🔭 Street View</a>`
+          : "";
+        rows.push(`<div class="address-row">${escapeHtml(loc.address)}${svHtml}</div>`);
+      }
     }
-    if (biz.website) parts.push(`<a href="${biz.website}" target="_blank" rel="noopener">${escapeHtml(biz.website)}</a>`);
-    if (biz.lat && biz.lng) {
-      const svUrl = `https://www.google.com/maps?q=&layer=c&cbll=${biz.lat},${biz.lng}`;
-      parts.push(`<a href="${svUrl}" target="_blank" rel="noopener" class="street-view-link">🔭 Street View</a>`);
+    if (biz.website) {
+      rows.push(`<div class="address-row"><a href="${biz.website}" target="_blank" rel="noopener">${escapeHtml(biz.website)}</a></div>`);
     }
-    addressEl.innerHTML = parts.join(" &mdash; ");
+    addressEl.innerHTML = rows.join("");
 
   } catch (err) {
     body.innerHTML = `<p style="color:#f44336;padding:16px 0;font-size:13px;">Failed to load business details.</p>`;
