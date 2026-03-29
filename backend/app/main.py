@@ -109,5 +109,6 @@ if STATIC_DIR.exists():
 
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc):
-    # Redirect unknown URLs to home rather than showing a raw 404
-    return RedirectResponse(url="/", status_code=302)
+    if STATIC_DIR.exists():
+        return FileResponse(STATIC_DIR / "404.html", status_code=404)
+    return Response(content="404 Not Found", status_code=404)
