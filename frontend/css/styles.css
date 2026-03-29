@@ -190,21 +190,30 @@ body {
   justify-content: center;
   gap: 8px;
   padding: 0 20px;
-  height: 44px;
+  height: 52px;
   cursor: pointer;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1.5px solid rgba(245, 158, 11, 0.5);
   border-radius: var(--radius);
   color: var(--color-text);
   width: calc(100% - 32px);
-  margin: 6px 16px;
+  margin: 8px 16px;
   user-select: none;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.3);
+  animation: drawer-pulse 2s ease-out 1.5s 2;
+}
+
+@keyframes drawer-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35); }
+  70%  { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
 }
 
 .unlocated-drawer-handle:hover {
-  background: rgba(255,255,255,0.08);
-  border-color: var(--color-text-muted);
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.8);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
 }
 
 .unlocated-drawer-pill {
@@ -212,8 +221,8 @@ body {
   display: inline-block;
   width: 8px;
   height: 8px;
-  border-right: 2px solid var(--color-text-muted);
-  border-top: 2px solid var(--color-text-muted);
+  border-right: 2px solid #f59e0b;
+  border-top: 2px solid #f59e0b;
   transform: rotate(-45deg) translateY(2px);
   flex-shrink: 0;
   transition: transform 0.25s;
@@ -223,14 +232,37 @@ body {
   transform: rotate(135deg) translateY(2px);
 }
 
+.unlocated-drawer-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 #unlocated-drawer-label {
   font-family: var(--font-heading);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: var(--color-text);
+  color: #f59e0b;
   line-height: 1;
+}
+
+.unlocated-drawer-badge {
+  display: none;
+  background: #f59e0b;
+  color: #1c1c24;
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.unlocated-drawer-badge.visible {
+  display: inline-block;
 }
 
 .unlocated-drawer-body {

@@ -155,12 +155,17 @@ function renderUnlocatedStrip() {
     return;
   }
 
-  // Update handle label
+  // Update handle label + badge
   const city = citiesById[activeFilters.city];
   const cityLabel = city ? city.name : "This City";
   const count = items.length;
   document.getElementById("unlocated-drawer-label").textContent =
-    `${count} place${count !== 1 ? "s" : ""} without a location in ${cityLabel}`;
+    `Places without a location in ${cityLabel}`;
+  const badge = document.getElementById("unlocated-drawer-badge");
+  if (badge) {
+    badge.textContent = count;
+    badge.classList.add("visible");
+  }
 
   drawer.style.display = "flex";
 
