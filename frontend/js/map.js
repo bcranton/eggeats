@@ -95,10 +95,11 @@ let activeFilters = {
   dateFrom: "",     // YYYY-MM-DD (custom range)
   dateTo: "",       // YYYY-MM-DD (custom range)
 };
+let superclusterIndex = null; // supercluster instance for the current pin set
 let listViewData = []; // businesses shown in list mode
 let visiblePins = []; // currently rendered map pins (filtered)
 let currentPinIndex = -1; // index into visiblePins for the open panel
-let activeMarkerCircle = null; // the circle element of the currently open pin
+let activePinKey = null;       // "lat:lng" of the currently open pin
 
 // Sentiment → marker colour mapping
 const SENTIMENT_COLORS = {
@@ -456,7 +457,12 @@ function fitMapToPins() {
     map.addControl(new mapLib.NavigationControl(), "bottom-right");
 
     // Wait for map to load before adding markers
-    map.on("load", () => { addMarkers(visible); fitMapToPins(); });
+    map.on("load", () => {
+      addMarkers(visible);
+      fitMapToPins();
+      map.on("moveend", renderClusters);
+      map.on("zoomend", renderClusters);
+    });
     return;
   }
 
@@ -465,19 +471,12 @@ function fitMapToPins() {
 }
 
 function addMarkers(visible) {
-  // Clear existing markers
-  currentMarkers.forEach(m => m.remove());
-  currentMarkers = [];
-  if (currentPopup) {
-    currentPopup.remove();
-    currentPopup = null;
-  }
+  if (currentPopup) { currentPopup.remove(); currentPopup = null; }
 
   visiblePins = visible;
 
-  // Filter to pins geographically close to the city centre so that
-  // businesses with stale/wrong coordinates from other cities don't
-  // pollute the cycle and teleport the user across the world.
+  // Filter geographically close to city centre (prevents stale coordinates
+  // from other cities polluting the navigation cycle)
   const city = citiesById[activeFilters.city];
   if (city && city.center_lat && city.center_lng) {
     visiblePins = visible.filter(p =>
@@ -486,64 +485,121 @@ function addMarkers(visible) {
     );
   }
 
-  // Sort west → east so the cycle arrows feel geographic
+  // Sort west → east so cycle arrows feel geographic
   visiblePins.sort((a, b) => a.lng - b.lng);
 
-  // Re-assign stable indices based on the filtered list so clicks and
-  // the cycle counter stay in sync. Key by lat:lng so multi-location
-  // businesses each get their own index.
-  const pinIndexMap = new Map(visiblePins.map((p, i) => [`${p.lat}:${p.lng}`, i]));
+  // Build supercluster index; embed pinIndex in each feature's properties
+  superclusterIndex = new Supercluster({ radius: 50, maxZoom: 13 });
+  superclusterIndex.load(
+    visiblePins.map((pin, i) => ({
+      type: "Feature",
+      properties: { ...pin, pinKey: `${pin.lat}:${pin.lng}`, pinIndex: i },
+      geometry: { type: "Point", coordinates: [pin.lng, pin.lat] },
+    }))
+  );
 
-  // Add markers
-  visible.forEach((pin) => {
-    const color = SENTIMENT_COLORS[pin.sentiment_summary] || SENTIMENT_COLORS.null;
-
-    // Create custom marker element
-    const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
-    const markerSize = isTouchDevice ? 24 : 18;
-
-    // Outer el is the Mapbox anchor — Mapbox sets transform:translate on it for positioning.
-    // We must NOT modify el's transform or it jumps off-screen.
-    // Instead, scale an inner circle element on hover.
-    const el = document.createElement("div");
-    el.className = "map-marker";
-    el.style.cssText = `width: ${markerSize}px; height: ${markerSize}px; cursor: pointer;`;
-
-    const circle = document.createElement("div");
-    circle.style.cssText = `
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      background: ${color};
-      border: 2px solid #fff;
-      opacity: ${pin.is_closed ? 0.4 : 0.9};
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-      transition: transform 0.15s;
-    `;
-    el.appendChild(circle);
-
-    el.addEventListener("mouseenter", () => { circle.style.transform = "scale(1.3)"; });
-    el.addEventListener("mouseleave", () => {
-      if (circle !== activeMarkerCircle) circle.style.transform = "scale(1)";
-    });
-
-    const marker = new mapLib.Marker({ element: el })
-      .setLngLat([pin.lng, pin.lat])
-      .addTo(map);
-
-    el.addEventListener("click", (e) => {
-      e.stopPropagation();
-      setActiveMarker(circle);
-      openBusinessPanel(pin.id, pinIndexMap.get(`${pin.lat}:${pin.lng}`) ?? -1, pin.lat, pin.lng);
-    });
-
-    // Store circle on marker so navigateToPin can highlight it
-    marker._circle = circle;
-    currentMarkers.push(marker);
-  });
-
-
+  renderClusters();
   document.getElementById("loading").classList.add("hidden");
+}
+
+// ── Tooltip ────────────────────────────────────────────────
+function showTooltip(anchorEl, text) {
+  const tooltip = document.getElementById("pin-tooltip");
+  const rect = anchorEl.getBoundingClientRect();
+  tooltip.textContent = text;
+  tooltip.style.left = `${rect.left + rect.width / 2}px`;
+  tooltip.style.top = `${rect.top}px`;
+  tooltip.classList.add("visible");
+}
+function hideTooltip() {
+  document.getElementById("pin-tooltip").classList.remove("visible");
+}
+
+// ── Cluster + pin rendering ────────────────────────────────
+function renderClusters() {
+  if (!superclusterIndex || !map) return;
+
+  currentMarkers.forEach(m => m.remove());
+  currentMarkers = [];
+
+  const bounds = map.getBounds();
+  const zoom = Math.floor(map.getZoom());
+  const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+  const clusters = superclusterIndex.getClusters(bbox, zoom);
+
+  clusters.forEach(cluster => {
+    const [lng, lat] = cluster.geometry.coordinates;
+
+    if (cluster.properties.cluster) {
+      // ── Cluster bubble ──────────────────────────────────
+      const el = document.createElement("div");
+      el.className = "cluster-marker";
+      el.textContent = cluster.properties.point_count_abbreviated;
+      el.addEventListener("click", () => {
+        const expansionZoom = Math.min(
+          superclusterIndex.getClusterExpansionZoom(cluster.id), 16
+        );
+        map.easeTo({ center: [lng, lat], zoom: expansionZoom });
+      });
+      const marker = new mapLib.Marker({ element: el, anchor: "center" })
+        .setLngLat([lng, lat]).addTo(map);
+      currentMarkers.push(marker);
+
+    } else {
+      // ── Individual pin (teardrop) ───────────────────────
+      const pin = cluster.properties;
+      const color = SENTIMENT_COLORS[pin.sentiment_summary] || SENTIMENT_COLORS.null;
+      const pinKey = `${pin.lat}:${pin.lng}`;
+      const isActive = activePinKey === pinKey;
+
+      const el = document.createElement("div");
+      el.className = "map-marker";
+      el.style.cssText = "width: 28px; height: 36px; cursor: pointer;";
+
+      el.innerHTML = `<svg width="28" height="36" viewBox="0 0 28 36"
+          xmlns="http://www.w3.org/2000/svg"
+          style="transition:transform 0.15s;transform-origin:center bottom;display:block;">
+        <path d="M14 1C6.8 1 1 6.8 1 14C1 23 14 35 14 35C14 35 27 23 27 14C27 6.8 21.2 1 14 1Z"
+              fill="${color}" stroke="white" stroke-width="2"
+              opacity="${pin.is_closed ? 0.45 : 0.95}"/>
+        <circle cx="14" cy="13" r="4" fill="rgba(255,255,255,0.65)"/>
+      </svg>`;
+
+      const svg = el.querySelector("svg");
+      if (isActive) {
+        svg.style.transform = "scale(1.4)";
+        svg.style.filter = "drop-shadow(0 0 5px rgba(255,255,255,0.7))";
+      }
+
+      el.addEventListener("mouseenter", () => {
+        if (activePinKey !== pinKey) svg.style.transform = "scale(1.2)";
+        showTooltip(el, pin.name);
+      });
+      el.addEventListener("mouseleave", () => {
+        if (activePinKey !== pinKey) svg.style.transform = "scale(1)";
+        hideTooltip();
+      });
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        activePinKey = pinKey;
+        currentMarkers.forEach(m => {
+          if (m._svg && m._pinKey !== pinKey) {
+            m._svg.style.transform = "scale(1)";
+            m._svg.style.filter = "";
+          }
+        });
+        svg.style.transform = "scale(1.4)";
+        svg.style.filter = "drop-shadow(0 0 5px rgba(255,255,255,0.7))";
+        openBusinessPanel(pin.id, pin.pinIndex ?? -1, pin.lat, pin.lng);
+      });
+
+      const marker = new mapLib.Marker({ element: el, anchor: "bottom" })
+        .setLngLat([lng, lat]).addTo(map);
+      marker._svg = svg;
+      marker._pinKey = pinKey;
+      currentMarkers.push(marker);
+    }
+  });
 }
 
 // ──────────────────────────────────────────────────────────
@@ -636,27 +692,25 @@ async function openBusinessPanel(businessId, pinIndex, clickedLat, clickedLng) {
   }
 }
 
-function setActiveMarker(circle) {
-  // Deactivate previous
-  if (activeMarkerCircle && activeMarkerCircle !== circle) {
-    activeMarkerCircle.style.transform = "scale(1)";
-    activeMarkerCircle.style.boxShadow = "0 2px 6px rgba(0,0,0,0.4)";
-    activeMarkerCircle.style.border = "2px solid #fff";
-    activeMarkerCircle.style.zIndex = "";
-  }
-  activeMarkerCircle = circle;
-  if (circle) {
-    circle.style.transform = "scale(1.5)";
-    circle.style.boxShadow = "0 0 0 3px #fff, 0 2px 8px rgba(0,0,0,0.6)";
-    circle.style.border = "2px solid #fff";
-    circle.style.zIndex = "1";
-  }
+function setActiveMarker(pinKey) {
+  activePinKey = pinKey || null;
+  currentMarkers.forEach(m => {
+    if (!m._svg) return;
+    if (pinKey && m._pinKey === pinKey) {
+      m._svg.style.transform = "scale(1.4)";
+      m._svg.style.filter = "drop-shadow(0 0 5px rgba(255,255,255,0.7))";
+    } else {
+      m._svg.style.transform = "scale(1)";
+      m._svg.style.filter = "";
+    }
+  });
 }
 
 function closePanel() {
   document.getElementById("info-panel").classList.remove("open");
   currentPinIndex = -1;
   setActiveMarker(null);
+  hideTooltip();
 }
 
 function updatePanelNav() {
@@ -682,12 +736,7 @@ function navigateToPin(index) {
   if (!total) return;
   const wrapped = ((index % total) + total) % total;
   const pin = visiblePins[wrapped];
-  // Highlight the marker for this pin
-  const marker = currentMarkers.find(m => {
-    const ll = m.getLngLat();
-    return ll.lng === pin.lng && ll.lat === pin.lat;
-  });
-  setActiveMarker(marker ? marker._circle : null);
+  setActiveMarker(`${pin.lat}:${pin.lng}`);
   openBusinessPanel(pin.id, wrapped, pin.lat, pin.lng);
   map.easeTo({ center: [pin.lng, pin.lat], duration: 300 });
 }
