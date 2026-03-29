@@ -71,9 +71,12 @@
   <div class="tab-panel" id="tab-videos">
     <div class="section-header">
       <h2>Video Processing Status</h2>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <button class="btn btn-primary" id="btn-run-pipeline">▶ Run Pipeline (new + retry failed)</button>
         <button class="btn btn-secondary" id="btn-refresh-videos">↻ Refresh</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--color-text-muted);">
+          <input type="checkbox" id="hide-completed-videos" checked> Hide completed / ignored
+        </label>
       </div>
     </div>
     <div id="pipeline-status" style="display:none;padding:10px 0;font-size:13px;color:var(--color-text-muted);">

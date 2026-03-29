@@ -205,6 +205,7 @@ async function loadVideos() {
 
 function renderVideos() {
   const tbody = document.getElementById("videos-table-body");
+  const hideCompleted = document.getElementById("hide-completed-videos")?.checked ?? false;
 
   // Update sort icons
   document.querySelectorAll("#tab-videos th.sortable").forEach(th => {
@@ -218,13 +219,17 @@ function renderVideos() {
     }
   });
 
-  if (!videosData.length) {
+  const filtered = hideCompleted
+    ? videosData.filter(v => v.processing_status !== "completed" && v.processing_status !== "ignored")
+    : videosData;
+
+  if (!filtered.length) {
     tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No videos found.</td></tr>`;
     return;
   }
 
   // Sort
-  const sorted = [...videosData].sort((a, b) => {
+  const sorted = [...filtered].sort((a, b) => {
     let av = a[videoSort.col], bv = b[videoSort.col];
     // Nulls always last
     if (av == null && bv == null) return 0;
@@ -391,6 +396,7 @@ async function clearExtractions(videoId, btn) {
 }
 
 document.getElementById("btn-refresh-videos").addEventListener("click", loadVideos);
+document.getElementById("hide-completed-videos").addEventListener("change", renderVideos);
 
 let pipelinePoller = null;
 
