@@ -26,3 +26,6 @@ itsdangerous==2.2.0
 
 # Server-side in-memory TTL cache
 cachetools==7.0.5
+
+# Rate limiting
+slowapi==0.1.9

@@ -4,8 +4,11 @@ from pathlib import Path
 
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from app.api import admin as admin_router
@@ -17,6 +20,9 @@ from app.database import get_db
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Rate limiter — keyed by client IP
+limiter = Limiter(key_func=get_remote_address)
+
 # In Docker (Railway), frontend is copied to /frontend.
 # In local dev with docker-compose, it's mounted at /frontend too.
 # For local non-Docker runs, fall back to relative path from repo root.
@@ -27,7 +33,15 @@ STATIC_DIR = _docker_static if _docker_static.exists() else _repo_static
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting Egg Eats API")
+    from app.config import get_settings
+    settings = get_settings()
+    if settings.environment == "production":
+        missing = settings.validate_for_production()
+        if missing:
+            raise RuntimeError(
+                f"Missing required environment variables for production: {', '.join(missing)}"
+            )
+    logger.info("Starting Egg Eats API (environment=%s)", settings.environment)
     yield
     logger.info("Shutting down")
 
@@ -43,12 +57,23 @@ app = FastAPI(
     openapi_url=None,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+from app.config import get_settings as _get_settings
+_settings = _get_settings()
+_allowed_origins = (
+    ["https://eggeats.com", "https://www.eggeats.com"]
+    if _settings.environment == "production"
+    else ["http://localhost:8000", "http://localhost:3000", "http://127.0.0.1:8000"]
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Cookie", "Authorization"],
 )
 
 # API routes

@@ -43,6 +43,20 @@ class Settings(BaseSettings):
     def admin_email_list(self) -> list[str]:
         return [e.strip().lower() for e in self.admin_emails.split(",")]
 
+    def validate_for_production(self) -> list[str]:
+        """
+        Returns a list of missing/empty required secrets for production.
+        Call this at startup when environment == 'production'.
+        """
+        required = {
+            "SECRET_KEY": self.secret_key,
+            "GOOGLE_CLIENT_ID": self.google_client_id,
+            "GOOGLE_CLIENT_SECRET": self.google_client_secret,
+            "ADMIN_EMAILS": self.admin_emails,
+            "MAPBOX_ACCESS_TOKEN": self.mapbox_access_token,
+        }
+        return [name for name, value in required.items() if not value]
+
     class Config:
         env_file = ".env"
         extra = "ignore"

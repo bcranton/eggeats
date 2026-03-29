@@ -7,10 +7,14 @@ from typing import Optional
 from datetime import datetime, timedelta, timezone
 
 import json as _json
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import exists, and_, select
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
+
+limiter = Limiter(key_func=get_remote_address)
 
 # Browser cache header: 5-minute TTL, matches server-side cache below.
 MAP_DATA_CACHE = "public, max-age=300, stale-while-revalidate=60"
@@ -135,7 +139,8 @@ def _mention_to_summary(mention: Mention) -> MentionSummary:
 # ---------------------------------------------------------------------------
 
 @router.get("/cities", response_model=list[CitySchema])
-def get_cities(response: Response, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+def get_cities(request: Request, response: Response, db: Session = Depends(get_db)):
     """List all cities ordered by number of approved businesses."""
     response.headers["Cache-Control"] = MAP_DATA_CACHE
     cached = cache_get("cities")
@@ -185,7 +190,9 @@ def _apply_date_filter(query, date_from: Optional[str], date_to: Optional[str]):
 
 
 @router.get("/map-data", response_model=list[BusinessMapPin])
+@limiter.limit("30/minute")
 def get_map_data(
+    request: Request,
     response: Response,
     city_id: Optional[int] = Query(None),
     category: Optional[str] = Query(None),
@@ -260,7 +267,8 @@ def get_map_data(
 
 
 @router.get("/businesses/{business_id}", response_model=BusinessDetail)
-def get_business(business_id: int, response: Response, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+def get_business(request: Request, business_id: int, response: Response, db: Session = Depends(get_db)):
     """Full business detail including all mentions and quotes."""
     response.headers["Cache-Control"] = MAP_DATA_CACHE
 
@@ -328,7 +336,9 @@ class NoLocationBusiness(BaseModel):
 
 
 @router.get("/no-location", response_model=list[NoLocationBusiness])
+@limiter.limit("30/minute")
 def get_no_location_businesses(
+    request: Request,
     response: Response,
     city_id: Optional[int] = Query(None),
     date_from: Optional[str] = Query(None),
