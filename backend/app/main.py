@@ -106,3 +106,8 @@ if STATIC_DIR.exists():
         return response
 
     app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="frontend")
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    # Redirect unknown URLs to home rather than showing a raw 404
+    return RedirectResponse(url="/", status_code=302)
