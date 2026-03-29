@@ -1,8 +1,12 @@
 /* =========================================================
-   Egg Eats — Map JS (Mapbox GL)
+   Egg Eats — Map JS
    ========================================================= */
 
 const API = "";  // same-origin
+
+// Set by bootstrap() based on /api/config map_provider value.
+// Either mapboxgl (Mapbox) or maplibregl (OpenFreeMap).
+let mapLib = null;
 
 // Extract [MM/DD/YYYY] from a video title; returns a comparable number (YYYYMMDD) or 0
 function titleDate(title) {
@@ -112,7 +116,12 @@ const SENTIMENT_COLORS = {
 async function bootstrap() {
   try {
     const config = await fetch(`${API}/api/config`).then(r => r.json());
-    mapboxgl.accessToken = config.mapbox_access_token;
+    if (config.map_provider === "openfreemap") {
+      mapLib = maplibregl;
+    } else {
+      mapLib = mapboxgl;
+      mapboxgl.accessToken = config.mapbox_access_token;
+    }
     await loadCities();
     await loadMapData();
   } catch (err) {
@@ -433,14 +442,18 @@ function fitMapToPins() {
         ? [visible[0].lng, visible[0].lat]
         : [-123.1207, 49.2827];  // fallback
 
-    map = new mapboxgl.Map({
+    const mapStyle = (mapLib === maplibregl)
+      ? "https://tiles.openfreemap.org/styles/fiord"
+      : "mapbox://styles/mapbox/navigation-night-v1";
+
+    map = new mapLib.Map({
       container: "map",
-      style: "mapbox://styles/mapbox/navigation-night-v1",
+      style: mapStyle,
       center,
       zoom: defaultCity ? defaultCity.default_zoom : 12,
     });
 
-    map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+    map.addControl(new mapLib.NavigationControl(), "bottom-right");
 
     // Wait for map to load before adding markers
     map.on("load", () => { addMarkers(visible); fitMapToPins(); });
@@ -514,7 +527,7 @@ function addMarkers(visible) {
       if (circle !== activeMarkerCircle) circle.style.transform = "scale(1)";
     });
 
-    const marker = new mapboxgl.Marker({ element: el })
+    const marker = new mapLib.Marker({ element: el })
       .setLngLat([pin.lng, pin.lat])
       .addTo(map);
 

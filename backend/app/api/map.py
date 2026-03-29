@@ -22,7 +22,7 @@ MAP_DATA_CACHE = "public, max-age=300, stale-while-revalidate=60"
 from sqlalchemy import func as sa_func
 
 from app.database import get_db
-from app.models import Business, City, Mention, ReviewStatus, Video
+from app.models import Business, City, Mention, ReviewStatus, Video, SiteSetting
 from app.cache import cache_get, cache_set
 
 router = APIRouter(prefix="/api", tags=["map"])
@@ -405,8 +405,13 @@ def get_no_location_businesses(
 
 
 @router.get("/config")
-def get_frontend_config():
-    """Returns public config values needed by frontend (Mapbox token)."""
+def get_frontend_config(db: Session = Depends(get_db)):
+    """Returns public config values needed by frontend (Mapbox token, map provider)."""
     from app.config import get_settings
     settings = get_settings()
-    return {"mapbox_access_token": settings.mapbox_access_token}
+    row = db.query(SiteSetting).filter(SiteSetting.key == "map_provider").first()
+    map_provider = row.value if row else "mapbox"
+    return {
+        "mapbox_access_token": settings.mapbox_access_token,
+        "map_provider": map_provider,
+    }

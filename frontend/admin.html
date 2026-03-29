@@ -50,6 +50,7 @@
     <button class="tab-btn" data-tab="tab-videos">Videos</button>
     <button class="tab-btn" data-tab="tab-businesses">Businesses</button>
     <button class="tab-btn" data-tab="tab-setup">Setup</button>
+    <button class="tab-btn" data-tab="tab-settings">Settings</button>
   </div>
 
   <!-- Tab: Review Queue -->
@@ -188,6 +189,29 @@
       <p style="margin:0 0 16px;font-size:13px;color:var(--color-text-muted);">Creates a virtual "No Fixed Location" city. Businesses assigned to it appear as a browsable list on the frontend instead of map pins — useful for chains or places NL reviewed without a specific location.</p>
       <div id="virtual-city-status" style="font-size:13px;color:var(--color-text-muted);margin-bottom:12px;"></div>
       <button class="btn btn-secondary" id="btn-create-virtual-city">Create "No Fixed Location" city</button>
+    </div>
+  </div>
+
+  <!-- Tab: Settings -->
+  <div class="tab-panel" id="tab-settings">
+    <div class="section-header">
+      <h2>Site Settings</h2>
+    </div>
+    <div class="section-body" style="max-width:480px;display:flex;flex-direction:column;gap:20px;">
+      <div>
+        <label style="display:block;font-weight:600;margin-bottom:8px;">Map Provider</label>
+        <p style="font-size:13px;color:var(--color-text-muted);margin-bottom:12px;">
+          Mapbox uses the navigation-night style. OpenFreeMap uses the Fiord style and has no per-request cost.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <select class="filter-select" id="setting-map-provider" style="width:200px;">
+            <option value="mapbox">Mapbox (navigation-night)</option>
+            <option value="openfreemap">OpenFreeMap (Fiord)</option>
+          </select>
+          <button class="btn btn-primary" id="btn-save-settings">Save</button>
+        </div>
+        <p id="settings-status" style="font-size:13px;margin-top:8px;"></p>
+      </div>
     </div>
   </div>
 
