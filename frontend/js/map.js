@@ -323,11 +323,6 @@ function renderListView() {
   }
   items = [...items].sort((a, b) => a.name.localeCompare(b.name));
 
-  // Update stats
-  document.getElementById("stat-places").textContent = items.length;
-  const totalMentions = items.reduce((sum, b) => sum + b.mentions.length, 0);
-  document.getElementById("stat-mentions").textContent = totalMentions;
-
   if (!items.length) {
     container.innerHTML = `<p class="list-view-empty">No places found for the current filters.</p>`;
     return;
