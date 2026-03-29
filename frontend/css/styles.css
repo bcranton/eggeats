@@ -526,23 +526,24 @@ select.filter-select:focus {
 
 /* ── Business Info Panel (overlays the map) ──────────── */
 .info-panel {
-  /* Desktop: in-flow flex item that collapses when closed */
-  position: relative;
-  width: 0;
-  flex-shrink: 0;
-  align-self: stretch;
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 360px;
+  height: 100vh;
   background: var(--color-surface);
   border-left: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  z-index: 10;
-  transition: width 0.25s ease;
+  z-index: 100;
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
   box-shadow: var(--shadow);
 }
 
 .info-panel.open {
-  width: 360px;
+  transform: translateX(0);
 }
 
 .info-panel-header {
@@ -982,7 +983,6 @@ select.filter-select:focus {
 
   /* Info panel → full-width bottom sheet on mobile */
   .info-panel {
-    position: fixed;
     width: 100%;
     top: auto;
     bottom: 0;
@@ -997,7 +997,6 @@ select.filter-select:focus {
   }
 
   .info-panel.open {
-    width: 100%;
     transform: translateY(0);
   }
 
