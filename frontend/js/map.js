@@ -615,7 +615,7 @@ async function openBusinessPanel(businessId, pinIndex, clickedLat, clickedLng) {
 
     if (activeLoc) {
       const svHtml = (activeLoc.lat && activeLoc.lng)
-        ? ` <a href="https://www.google.com/maps?q=&layer=c&cbll=${activeLoc.lat},${activeLoc.lng}" target="_blank" rel="noopener" class="street-view-link">🔭 Street View</a>`
+        ? ` <a href="https://www.google.com/maps?q=&layer=c&cbll=${activeLoc.lat},${activeLoc.lng}" target="_blank" rel="noopener" class="street-view-link">📍 Street View</a>`
         : "";
       addressEl.innerHTML = `<div class="address-row">${escapeHtml(activeLoc.address)}${svHtml}</div>`;
     } else {
