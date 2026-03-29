@@ -748,13 +748,13 @@ select.filter-select:focus {
 }
 
 .info-panel-address {
-  padding: 10px 16px 12px;
-  border-top: 1px solid var(--color-border);
   font-size: 12px;
   color: var(--color-text-muted);
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  min-height: 0;
+}
+
+.info-panel-address:empty {
+  display: none;
 }
 
 .address-row {
@@ -764,20 +764,11 @@ select.filter-select:focus {
   flex-wrap: wrap;
 }
 
-.address-row--active {
-  color: var(--color-text);
-  font-weight: 600;
-}
-
-.info-panel-address a {
-  color: var(--color-accent);
-  text-decoration: none;
-}
-
 .info-panel-address a.street-view-link {
   color: #60a5fa;
   white-space: nowrap;
   flex-shrink: 0;
+  text-decoration: none;
 }
 
 .info-panel-address a.street-view-link:hover {

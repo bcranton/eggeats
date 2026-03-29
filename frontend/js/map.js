@@ -606,24 +606,21 @@ async function openBusinessPanel(businessId, pinIndex, clickedLat, clickedLng) {
       });
     }
 
-    // Address / website / street view
+    // Address + street view (for the clicked location only)
     const addressEl = document.getElementById("panel-address");
-    const rows = [];
-    if (biz.locations && biz.locations.length) {
-      for (const loc of biz.locations) {
-        const isActive = clickedLat != null && clickedLng != null
-          && Math.abs(loc.lat - clickedLat) < 0.0001
-          && Math.abs(loc.lng - clickedLng) < 0.0001;
-        const svHtml = (loc.lat && loc.lng)
-          ? ` <a href="https://www.google.com/maps?q=&layer=c&cbll=${loc.lat},${loc.lng}" target="_blank" rel="noopener" class="street-view-link">🔭 Street View</a>`
-          : "";
-        rows.push(`<div class="address-row${isActive ? " address-row--active" : ""}">${escapeHtml(loc.address)}${svHtml}</div>`);
-      }
+    const activeLoc = biz.locations && biz.locations.find(loc =>
+      clickedLat != null && Math.abs(loc.lat - clickedLat) < 0.0001
+        && Math.abs(loc.lng - clickedLng) < 0.0001
+    ) || (biz.locations && biz.locations[0]) || null;
+
+    if (activeLoc) {
+      const svHtml = (activeLoc.lat && activeLoc.lng)
+        ? ` <a href="https://www.google.com/maps?q=&layer=c&cbll=${activeLoc.lat},${activeLoc.lng}" target="_blank" rel="noopener" class="street-view-link">🔭 Street View</a>`
+        : "";
+      addressEl.innerHTML = `<div class="address-row">${escapeHtml(activeLoc.address)}${svHtml}</div>`;
+    } else {
+      addressEl.innerHTML = "";
     }
-    if (biz.website) {
-      rows.push(`<div class="address-row"><a href="${biz.website}" target="_blank" rel="noopener">${escapeHtml(biz.website)}</a></div>`);
-    }
-    addressEl.innerHTML = rows.join("");
 
   } catch (err) {
     body.innerHTML = `<p style="color:#f44336;padding:16px 0;font-size:13px;">Failed to load business details.</p>`;
