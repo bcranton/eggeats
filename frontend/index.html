@@ -159,26 +159,25 @@
     </div>
   </div>
 
+  <!-- Business info panel — flex sibling on desktop, fixed bottom sheet on mobile -->
+  <aside class="info-panel" id="info-panel">
+    <div class="info-panel-header">
+      <div class="panel-header-top">
+        <div class="business-name" id="panel-name">–</div>
+        <button class="close-btn" id="panel-close" title="Close">✕</button>
+      </div>
+      <div class="info-panel-address" id="panel-address"></div>
+      <div class="info-panel-meta" id="panel-meta"></div>
+      <div class="panel-nav" id="panel-nav">
+        <button class="panel-nav-btn" id="panel-prev" title="Previous place">&#8592;</button>
+        <span class="panel-nav-counter" id="panel-nav-counter"></span>
+        <button class="panel-nav-btn" id="panel-next" title="Next place">&#8594;</button>
+      </div>
+    </div>
+    <div class="info-panel-body" id="panel-body"></div>
+  </aside>
 
 </div>
-
-<!-- Business info panel (slides over the map) -->
-<aside class="info-panel" id="info-panel">
-  <div class="info-panel-header">
-    <div class="panel-header-top">
-      <div class="business-name" id="panel-name">–</div>
-      <button class="close-btn" id="panel-close" title="Close">✕</button>
-    </div>
-    <div class="info-panel-address" id="panel-address"></div>
-    <div class="info-panel-meta" id="panel-meta"></div>
-    <div class="panel-nav" id="panel-nav">
-      <button class="panel-nav-btn" id="panel-prev" title="Previous place">&#8592;</button>
-      <span class="panel-nav-counter" id="panel-nav-counter"></span>
-      <button class="panel-nav-btn" id="panel-next" title="Next place">&#8594;</button>
-    </div>
-  </div>
-  <div class="info-panel-body" id="panel-body"></div>
-</aside>
 
 <!-- Mobile overlay (dims map behind filter drawer) -->
 <div class="mobile-overlay" id="mobile-overlay"></div>
