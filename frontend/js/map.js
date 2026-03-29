@@ -782,6 +782,29 @@ function isListViewActive() {
 
 document.getElementById("panel-close").addEventListener("click", closePanel);
 
+// Swipe-down-to-close on mobile (attached to header so it doesn't
+// conflict with scrolling the mentions list in panel-body)
+(function () {
+  const header = document.getElementById("info-panel").querySelector(".info-panel-header");
+  let touchStartY = 0;
+  let touchStartX = 0;
+
+  header.addEventListener("touchstart", (e) => {
+    touchStartY = e.touches[0].clientY;
+    touchStartX = e.touches[0].clientX;
+  }, { passive: true });
+
+  header.addEventListener("touchend", (e) => {
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    const dx = Math.abs(e.changedTouches[0].clientX - touchStartX);
+    // Close if swipe is downward (>50px), more vertical than horizontal,
+    // and the panel is currently open
+    if (dy > 50 && dy > dx * 1.5 && document.getElementById("info-panel").classList.contains("open")) {
+      closePanel();
+    }
+  }, { passive: true });
+})();
+
 // ──────────────────────────────────────────────────────────
 // Mobile filter drawer
 // ──────────────────────────────────────────────────────────
