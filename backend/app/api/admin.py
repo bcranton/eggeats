@@ -246,8 +246,6 @@ def seed_status(
 @router.get("/review-queue", response_model=list[ReviewQueueItem])
 def get_review_queue(
     status: str = Query("pending"),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
     _: AdminSession = Depends(get_admin_session),
 ):
@@ -267,8 +265,6 @@ def get_review_queue(
             .joinedload(Mention.video),
         )
         .order_by(ReviewQueue.created_at.desc())
-        .offset(skip)
-        .limit(limit)
         .all()
     )
 
@@ -351,8 +347,6 @@ def resolve_review_item(
 @router.get("/videos", response_model=list[VideoStatus])
 def get_videos(
     status: Optional[str] = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
     _: AdminSession = Depends(get_admin_session),
 ):
@@ -368,7 +362,7 @@ def get_videos(
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
 
-    videos = query.order_by(Video.published_at.desc()).offset(skip).limit(limit).all()
+    videos = query.order_by(Video.published_at.desc()).all()
 
     return [
         VideoStatus(
@@ -552,8 +546,6 @@ def _run_pipeline_bg(
 def get_businesses(
     review_status: Optional[str] = Query(None),
     city_id: Optional[int] = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(200, ge=1, le=1000),
     db: Session = Depends(get_db),
     _: AdminSession = Depends(get_admin_session),
 ):
@@ -573,7 +565,7 @@ def get_businesses(
     if city_id:
         query = query.filter(Business.city_id == city_id)
 
-    businesses = query.order_by(Business.created_at.desc()).offset(skip).limit(limit).all()
+    businesses = query.order_by(Business.created_at.desc()).all()
 
     result = []
     for b in businesses:
