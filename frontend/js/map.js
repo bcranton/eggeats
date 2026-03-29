@@ -610,13 +610,17 @@ async function openBusinessPanel(businessId, pinIndex) {
       });
     }
 
-    // Address / website
+    // Address / website / street view
     const addressEl = document.getElementById("panel-address");
     const parts = [];
     if (biz.addresses && biz.addresses.length) {
       parts.push(biz.addresses.map(a => escapeHtml(a)).join(" &bull; "));
     }
     if (biz.website) parts.push(`<a href="${biz.website}" target="_blank" rel="noopener">${escapeHtml(biz.website)}</a>`);
+    if (biz.lat && biz.lng) {
+      const svUrl = `https://www.google.com/maps?q=&layer=c&cbll=${biz.lat},${biz.lng}`;
+      parts.push(`<a href="${svUrl}" target="_blank" rel="noopener" class="street-view-link">🔭 Street View</a>`);
+    }
     addressEl.innerHTML = parts.join(" &mdash; ");
 
   } catch (err) {

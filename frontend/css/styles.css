@@ -781,6 +781,15 @@ select.filter-select:focus {
   text-decoration: none;
 }
 
+.info-panel-address a.street-view-link {
+  color: #60a5fa;
+  white-space: nowrap;
+}
+
+.info-panel-address a.street-view-link:hover {
+  text-decoration: underline;
+}
+
 
 /* ── Bottom bar ──────────────────────────────────────── */
 .bottom-bar {
