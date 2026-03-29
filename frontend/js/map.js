@@ -482,8 +482,9 @@ function addMarkers(visible) {
   visiblePins.sort((a, b) => a.lng - b.lng);
 
   // Re-assign stable indices based on the filtered list so clicks and
-  // the cycle counter stay in sync.
-  const pinIndexMap = new Map(visiblePins.map((p, i) => [p.id, i]));
+  // the cycle counter stay in sync. Key by lat:lng so multi-location
+  // businesses each get their own index.
+  const pinIndexMap = new Map(visiblePins.map((p, i) => [`${p.lat}:${p.lng}`, i]));
 
   // Add markers
   visible.forEach((pin) => {
@@ -525,7 +526,7 @@ function addMarkers(visible) {
     el.addEventListener("click", (e) => {
       e.stopPropagation();
       setActiveMarker(circle);
-      openBusinessPanel(pin.id, pinIndexMap.get(pin.id) ?? -1);
+      openBusinessPanel(pin.id, pinIndexMap.get(`${pin.lat}:${pin.lng}`) ?? -1, pin.lat, pin.lng);
     });
 
     // Store circle on marker so navigateToPin can highlight it
@@ -541,7 +542,7 @@ function addMarkers(visible) {
 // Business detail panel
 // ──────────────────────────────────────────────────────────
 
-async function openBusinessPanel(businessId, pinIndex) {
+async function openBusinessPanel(businessId, pinIndex, clickedLat, clickedLng) {
   const panel = document.getElementById("info-panel");
   const body = document.getElementById("panel-body");
   const meta = document.getElementById("panel-meta");
@@ -610,10 +611,13 @@ async function openBusinessPanel(businessId, pinIndex) {
     const rows = [];
     if (biz.locations && biz.locations.length) {
       for (const loc of biz.locations) {
+        const isActive = clickedLat != null && clickedLng != null
+          && Math.abs(loc.lat - clickedLat) < 0.0001
+          && Math.abs(loc.lng - clickedLng) < 0.0001;
         const svHtml = (loc.lat && loc.lng)
           ? ` <a href="https://www.google.com/maps?q=&layer=c&cbll=${loc.lat},${loc.lng}" target="_blank" rel="noopener" class="street-view-link">🔭 Street View</a>`
           : "";
-        rows.push(`<div class="address-row">${escapeHtml(loc.address)}${svHtml}</div>`);
+        rows.push(`<div class="address-row${isActive ? " address-row--active" : ""}">${escapeHtml(loc.address)}${svHtml}</div>`);
       }
     }
     if (biz.website) {
@@ -679,7 +683,7 @@ function navigateToPin(index) {
     return ll.lng === pin.lng && ll.lat === pin.lat;
   });
   setActiveMarker(marker ? marker._circle : null);
-  openBusinessPanel(pin.id, wrapped);
+  openBusinessPanel(pin.id, wrapped, pin.lat, pin.lng);
   map.easeTo({ center: [pin.lng, pin.lat], duration: 300 });
 }
 

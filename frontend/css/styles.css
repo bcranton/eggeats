@@ -764,6 +764,11 @@ select.filter-select:focus {
   flex-wrap: wrap;
 }
 
+.address-row--active {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
 .info-panel-address a {
   color: var(--color-accent);
   text-decoration: none;
