@@ -788,6 +788,26 @@ select.filter-select:focus {
   justify-content: center;
 }
 
+/* ── Ad spaces (desktop only) ───────────────────────── */
+.ad-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  background: var(--color-surface);
+}
+
+.ad-bottom {
+  height: 90px;
+  flex-shrink: 0;
+  background: var(--color-surface);
+}
+
+@media (max-width: 768px) {
+  .ad-sidebar,
+  .ad-bottom {
+    display: none;
+  }
+}
+
 /* ── Loading overlay ─────────────────────────────────── */
 #loading {
   position: fixed;
