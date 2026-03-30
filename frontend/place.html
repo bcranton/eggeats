@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Filled by JS once data loads -->
+  <title>Egg Eats — Loading…</title>
+  <meta name="description" content="A place visited by Northernlion, mapped and reviewed on Egg Eats." />
+  <link rel="canonical" id="canonical-url" href="https://eggeats.com/" />
+
+  <!-- Open Graph (filled dynamically) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Egg Eats" />
+  <meta property="og:title" id="og-title" content="Egg Eats" />
+  <meta property="og:description" id="og-desc" content="" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" id="tw-title" content="Egg Eats" />
+  <meta name="twitter:description" id="tw-desc" content="" />
+
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Oswald:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+
+  <style>
+    /* ── Place page specific layout ───────────────────────── */
+    body {
+      min-height: 100vh;
+      background: var(--color-bg);
+      color: var(--color-text);
+    }
+
+    .place-page-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 24px 16px 80px;
+    }
+
+    /* Back link */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-heading);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      transition: color 0.15s;
+    }
+    .back-link:hover { color: var(--color-text); }
+    .back-link svg { flex-shrink: 0; }
+
+    /* Header */
+    .place-header {
+      margin-bottom: 20px;
+    }
+    .place-title {
+      font-family: var(--font-title);
+      font-size: 2rem;
+      line-height: 1.15;
+      color: var(--color-text);
+      margin: 0 0 8px;
+    }
+    .place-city {
+      font-family: var(--font-heading);
+      font-size: 13px;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+    .place-address {
+      font-size: 13px;
+      color: var(--color-text-muted);
+      margin-bottom: 12px;
+    }
+    .place-address a {
+      color: var(--color-accent);
+      text-decoration: none;
+    }
+    .place-address a:hover { text-decoration: underline; }
+
+    .place-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .place-website {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      color: var(--color-accent);
+      text-decoration: none;
+      margin-bottom: 20px;
+    }
+    .place-website:hover { text-decoration: underline; }
+
+    /* Divider */
+    .place-divider {
+      border: none;
+      border-top: 1px solid var(--color-border);
+      margin: 20px 0;
+    }
+
+    /* Section heading */
+    .place-section-heading {
+      font-family: var(--font-heading);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin: 0 0 14px;
+    }
+
+    /* Mentions */
+    .place-mention {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .place-mention-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text);
+      margin-bottom: 8px;
+    }
+    .place-mention-quote {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--color-text-muted);
+      border-left: 3px solid var(--quote-color, #888899);
+      padding-left: 10px;
+      margin: 6px 0;
+      font-style: italic;
+    }
+    .place-mention-watch {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-accent);
+      text-decoration: none;
+      margin-top: 8px;
+      padding: 4px 10px;
+      border: 1px solid var(--color-accent);
+      border-radius: 4px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .place-mention-watch:hover {
+      background: var(--color-accent);
+      color: #fff;
+    }
+
+    /* Error / loading states */
+    .place-loading,
+    .place-error {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--color-text-muted);
+      font-family: var(--font-heading);
+    }
+    .place-error { color: #f44336; }
+
+    /* Map link footer */
+    .place-map-cta {
+      margin-top: 32px;
+      padding: 16px 20px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .place-map-cta p {
+      font-size: 13px;
+      color: var(--color-text-muted);
+      margin: 0;
+    }
+    .place-map-cta a {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-accent);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .place-map-cta a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<div class="place-page-wrap" id="place-content">
+  <p class="place-loading">Loading…</p>
+</div>
+
+<script>
+  // ── Helpers ──────────────────────────────────────────────────
+
+  const SENTIMENT_COLORS = {
+    positive: "#4ade80",
+    negative: "#c0253a",
+    neutral:  "#888899",
+    mixed:    "#f59e0b",
+  };
+
+  function escapeHtml(str) {
+    if (!str) return "";
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function capitalise(s) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  function sentimentEmoji(s) {
+    return { positive: "👍", negative: "👎", neutral: "😐", mixed: "🤔" }[s] || "";
+  }
+
+  function formatTime(secs) {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+
+  // Extract [MM/DD/YYYY] from video title → comparable number
+  function titleDate(title) {
+    const m = (title || "").match(/\[(\d{2})\/(\d{2})\/(\d{4})\]/);
+    if (!m) return 0;
+    return parseInt(m[3] + m[1] + m[2], 10);
+  }
+
+  function sortMentions(mentions) {
+    return [...mentions].sort((a, b) => titleDate(b.video_title) - titleDate(a.video_title));
+  }
+
+  // ── Routing: extract /place/{id} from the URL path ──────────
+
+  function getBusinessIdFromPath() {
+    const match = window.location.pathname.match(/\/place\/(\d+)/);
+    return match ? parseInt(match[1], 10) : null;
+  }
+
+  // ── Render ───────────────────────────────────────────────────
+
+  function renderPlace(biz) {
+    const wrap = document.getElementById("place-content");
+
+    // ── Update document head ────────────────────────────────
+
+    const pageTitle = `${biz.name} — Northernlion's ${biz.city.name} Guide | Egg Eats`;
+    const sentiment = dominantSentiment(biz.mentions);
+    const sentimentText = sentiment ? ` NL rates it ${sentiment}.` : "";
+    const descText = biz.addresses && biz.addresses[0]
+      ? `${biz.name} in ${biz.city.name}. Visited by Northernlion.${sentimentText} Mapped on Egg Eats.`
+      : `${biz.name} — visited by Northernlion in ${biz.city.name}.${sentimentText} Mapped on Egg Eats.`;
+
+    document.title = pageTitle;
+    document.querySelector('meta[name="description"]').setAttribute("content", descText);
+
+    const canonicalUrl = `https://eggeats.com/place/${biz.id}`;
+    document.getElementById("canonical-url").setAttribute("href", canonicalUrl);
+    document.getElementById("og-title").setAttribute("content", pageTitle);
+    document.getElementById("og-desc").setAttribute("content", descText);
+    document.getElementById("tw-title").setAttribute("content", pageTitle);
+    document.getElementById("tw-desc").setAttribute("content", descText);
+
+    // ── Schema.org structured data ──────────────────────────
+
+    const schemaType = categoryToSchemaType(biz.category);
+    const schemaObj = {
+      "@context": "https://schema.org",
+      "@type": schemaType,
+      "name": biz.name,
+      "url": canonicalUrl,
+      "description": descText,
+    };
+    if (biz.addresses && biz.addresses[0]) {
+      schemaObj["address"] = { "@type": "PostalAddress", "streetAddress": biz.addresses[0] };
+    }
+    if (biz.lat && biz.lng) {
+      schemaObj["geo"] = { "@type": "GeoCoordinates", "latitude": biz.lat, "longitude": biz.lng };
+    }
+    if (biz.website) {
+      schemaObj["sameAs"] = biz.website;
+    }
+    if (biz.is_closed) {
+      schemaObj["openingHoursSpecification"] = [];
+    }
+
+    const schemaScript = document.createElement("script");
+    schemaScript.type = "application/ld+json";
+    schemaScript.textContent = JSON.stringify(schemaObj);
+    document.head.appendChild(schemaScript);
+
+    // ── Build page HTML ─────────────────────────────────────
+
+    const sentimentColor = SENTIMENT_COLORS[sentiment] || "#888899";
+
+    const badgesHtml = [
+      biz.category
+        ? `<span class="badge badge-category">${escapeHtml(biz.category)}</span>`
+        : "",
+      sentiment
+        ? `<span class="badge badge-sentiment-${sentiment}">${sentimentEmoji(sentiment)} ${capitalise(sentiment)}</span>`
+        : "",
+      biz.is_closed
+        ? `<span class="badge badge-closed">Permanently Closed</span>`
+        : "",
+    ].filter(Boolean).join("");
+
+    const addressHtml = (biz.locations || []).map(loc => {
+      const svLink = (loc.lat && loc.lng)
+        ? ` <a href="https://www.google.com/maps?q=&layer=c&cbll=${loc.lat},${loc.lng}" target="_blank" rel="noopener">📍 Street View</a>`
+        : "";
+      return `<div>${escapeHtml(loc.address)}${svLink}</div>`;
+    }).join("");
+
+    const websiteHtml = biz.website
+      ? `<a class="place-website" href="${escapeHtml(biz.website)}" target="_blank" rel="noopener">
+           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+           Visit website
+         </a>`
+      : "";
+
+    const mentionsHtml = sortMentions(biz.mentions || []).map(m => {
+      const color = SENTIMENT_COLORS[m.sentiment] || "#888899";
+      const quotesHtml = (m.quotes || [])
+        .map(q => `<div class="place-mention-quote" style="--quote-color:${color}">"${escapeHtml(q)}"</div>`)
+        .join("");
+      const timeLabel = m.timestamp_seconds ? ` (${formatTime(m.timestamp_seconds)})` : "";
+      const watchLabel = `▶ Watch on YouTube${timeLabel}`;
+      return `
+        <div class="place-mention">
+          ${m.sentiment ? `<span class="badge badge-sentiment-${m.sentiment}" style="font-size:11px;display:inline-block;margin-bottom:8px;">${sentimentEmoji(m.sentiment)} ${capitalise(m.sentiment)}</span>` : ""}
+          <div class="place-mention-title">${escapeHtml(m.video_title)}</div>
+          ${quotesHtml || `<div class="place-mention-quote" style="opacity:0.5">No quotes extracted.</div>`}
+          <a class="place-mention-watch" href="${escapeHtml(m.youtube_url)}" target="_blank" rel="noopener">${watchLabel}</a>
+        </div>`;
+    }).join("");
+
+    wrap.innerHTML = `
+      <a class="back-link" href="/?place=${biz.id}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+        Back to Map
+      </a>
+
+      <header class="place-header">
+        <h1 class="place-title">${escapeHtml(biz.name)}</h1>
+        <div class="place-city">${escapeHtml(biz.city.name)}, ${escapeHtml(biz.city.country)}</div>
+        ${addressHtml ? `<div class="place-address">${addressHtml}</div>` : ""}
+        ${badgesHtml ? `<div class="place-badges">${badgesHtml}</div>` : ""}
+        ${websiteHtml}
+      </header>
+
+      <hr class="place-divider" />
+
+      <p class="place-section-heading">Northernlion's Mentions (${biz.mentions.length})</p>
+
+      ${mentionsHtml || `<p style="color:var(--color-text-muted);font-size:13px;">No mentions found.</p>`}
+
+      <div class="place-map-cta">
+        <p>Explore all the places Northernlion has visited on the interactive map.</p>
+        <a href="/">View Full Map →</a>
+      </div>
+    `;
+  }
+
+  function dominantSentiment(mentions) {
+    if (!mentions || !mentions.length) return null;
+    const counts = {};
+    for (const m of mentions) {
+      if (m.sentiment) counts[m.sentiment] = (counts[m.sentiment] || 0) + 1;
+    }
+    if (!Object.keys(counts).length) return null;
+    return Object.keys(counts).reduce((a, b) => counts[a] >= counts[b] ? a : b);
+  }
+
+  function categoryToSchemaType(category) {
+    const map = {
+      restaurant: "Restaurant",
+      cafe: "CafeOrCoffeeShop",
+      bar: "BarOrPub",
+      bakery: "Bakery",
+      market: "GroceryStore",
+      shop: "Store",
+      attraction: "TouristAttraction",
+    };
+    return map[category] || "LocalBusiness";
+  }
+
+  function renderError(msg) {
+    document.getElementById("place-content").innerHTML = `
+      <a class="back-link" href="/">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+        Back to Map
+      </a>
+      <p class="place-error">${escapeHtml(msg)}</p>
+    `;
+  }
+
+  // ── Bootstrap ────────────────────────────────────────────────
+
+  async function init() {
+    const businessId = getBusinessIdFromPath();
+    if (!businessId) {
+      renderError("Invalid place URL.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/businesses/${businessId}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          document.title = "Place Not Found | Egg Eats";
+          renderError("This place was not found. It may have been removed.");
+        } else {
+          renderError("Failed to load place data. Please try again.");
+        }
+        return;
+      }
+      const biz = await res.json();
+      renderPlace(biz);
+    } catch (err) {
+      console.error(err);
+      renderError("Failed to load place data. Is the server running?");
+    }
+  }
+
+  init();
+</script>
+
+</body>
+</html>

@@ -122,6 +122,32 @@ if STATIC_DIR.exists():
             headers={"Cache-Control": HTML_CACHE},
         )
 
+    @app.get("/place/{business_id}")
+    def serve_place(business_id: int):
+        return FileResponse(
+            STATIC_DIR / "place.html",
+            headers={"Cache-Control": HTML_CACHE},
+        )
+
+    @app.get("/sitemap.xml", response_class=Response)
+    def serve_sitemap(db: Session = Depends(get_db)):
+        from app.models import Business, ReviewStatus
+        businesses = (
+            db.query(Business.id, Business.updated_at)
+            .filter(Business.review_status == ReviewStatus.approved)
+            .all()
+        )
+        urls = ['  <url>\n    <loc>https://eggeats.com/</loc>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>']
+        for b in businesses:
+            lastmod = f"\n    <lastmod>{b.updated_at.strftime('%Y-%m-%d')}</lastmod>" if b.updated_at else ""
+            urls.append(
+                f'  <url>\n    <loc>https://eggeats.com/place/{b.id}</loc>{lastmod}\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>'
+            )
+        xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        xml += "\n".join(urls)
+        xml += "\n</urlset>"
+        return Response(content=xml, media_type="application/xml", headers={"Cache-Control": "public, max-age=3600"})
+
     @app.middleware("http")
     async def add_asset_cache_headers(request: Request, call_next):
         response = await call_next(request)

@@ -664,6 +664,13 @@ async function openBusinessPanel(businessId, pinIndex, clickedLat, clickedLng) {
     if (biz.is_closed) {
       meta.appendChild(makeBadge("Permanently Closed", "badge-closed"));
     }
+    // Place page link
+    const placeLink = document.createElement("a");
+    placeLink.href = `/place/${biz.id}`;
+    placeLink.className = "badge badge-place-link";
+    placeLink.title = "Open standalone page for this place";
+    placeLink.textContent = "↗ Share page";
+    meta.appendChild(placeLink);
 
     // Mentions
     body.innerHTML = "";

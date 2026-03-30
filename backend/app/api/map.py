@@ -405,6 +405,29 @@ def get_no_location_businesses(
     return result
 
 
+@router.get("/sitemap-data", response_model=list[dict])
+@limiter.limit("10/minute")
+def get_sitemap_data(request: Request, response: Response, db: Session = Depends(get_db)):
+    """Returns business IDs and names for sitemap generation."""
+    response.headers["Cache-Control"] = MAP_DATA_CACHE
+    cached = cache_get("sitemap-data")
+    if cached is not None:
+        return cached
+
+    businesses = (
+        db.query(Business.id, Business.name, Business.updated_at)
+        .filter(Business.review_status == ReviewStatus.approved)
+        .all()
+    )
+
+    result = [
+        {"id": b.id, "name": b.name, "updated_at": b.updated_at.isoformat() if b.updated_at else None}
+        for b in businesses
+    ]
+    cache_set("sitemap-data", result)
+    return result
+
+
 @router.get("/config")
 def get_frontend_config(db: Session = Depends(get_db)):
     """Returns public config values needed by frontend (Mapbox token, map provider)."""
