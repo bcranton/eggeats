@@ -9,14 +9,19 @@ Example: 500 simultaneous page loads → 1 DB query, not 500.
 The cache lives in process memory, so it resets on deploy/restart (fine — the
 DB is the source of truth). No Redis needed for this traffic level.
 
-TTL is set to 5 minutes to match the browser Cache-Control headers, so
-both layers stay in sync.
+TTL is set to 1 hour to match the Cloudflare edge cache. When Cloudflare
+misses and forwards a request to Railway, Railway serves from this cache
+rather than hitting Postgres — so Postgres only gets queried once per hour
+per cache key under normal traffic, not once per Cloudflare miss.
+
+Admin writes (create/update/delete) call cache_invalidate_prefix() immediately
+so changes are visible on the next request without waiting for TTL expiry.
 """
 import threading
 from cachetools import TTLCache
 
-# 5-minute TTL, max 256 cached entries (more than enough for our endpoints)
-CACHE_TTL = 300
+# 1-hour TTL, max 256 cached entries (more than enough for our endpoints)
+CACHE_TTL = 3600
 _cache: TTLCache = TTLCache(maxsize=256, ttl=CACHE_TTL)
 _lock = threading.Lock()
 
