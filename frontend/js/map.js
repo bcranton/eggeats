@@ -288,7 +288,7 @@ async function loadMapData() {
   ]);
   allPins = data;
   if (userListMode) {
-    listViewData = allPins;
+    await loadListModeData();
     updateListViewHeader();
     showListView();
     renderListView();
@@ -328,6 +328,15 @@ function showListView() {
 function showMapView() {
   document.getElementById("map").style.display = "";
   document.getElementById("list-view").style.display = "none";
+}
+
+async function loadListModeData() {
+  const params = new URLSearchParams();
+  if (activeFilters.city) params.set("city_id", activeFilters.city);
+  const { date_from, date_to } = activeDateRange();
+  if (date_from) params.set("date_from", date_from);
+  if (date_to)   params.set("date_to", date_to);
+  listViewData = await fetch(`${API}/api/list-data?${params}`).then(r => r.json());
 }
 
 function updateListViewHeader() {
@@ -371,30 +380,73 @@ function renderListView() {
     const badgesHtml = [
       biz.category ? `<span class="badge badge-category">${escapeHtml(biz.category)}</span>` : "",
       sentimentLabel ? `<span class="badge badge-sentiment-${biz.sentiment_summary}">${sentimentEmoji(biz.sentiment_summary)} ${sentimentLabel}</span>` : "",
-      biz.is_closed ? `<span class="badge badge-closed">Closed</span>` : "",
+      biz.is_closed ? `<span class="badge badge-closed">Permanently Closed</span>` : "",
+      `<a href="/place/${biz.id}" class="badge badge-place-link" onclick="event.stopPropagation()">↗ Share page</a>`,
     ].filter(Boolean).join("");
 
+    // Address + street view
+    const addressHtml = biz.address
+      ? `<div class="list-card-address">${escapeHtml(biz.address)}${
+          biz.lat && biz.lng
+            ? ` <a href="https://www.google.com/maps?q=&layer=c&cbll=${biz.lat},${biz.lng}" target="_blank" rel="noopener" class="street-view-link" onclick="event.stopPropagation()">📍 Street View</a>`
+            : ""
+        }</div>`
+      : "";
+
+    // Website
+    const websiteHtml = biz.website
+      ? `<div class="list-card-website"><a href="${escapeHtml(biz.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 ${escapeHtml(biz.website.replace(/^https?:\/\//, ""))}</a></div>`
+      : "";
+
     const mentionsHtml = sortMentions(biz.mentions || []).map(mention => {
+      const sentimentBadge = mention.sentiment
+        ? `<span class="badge badge-sentiment-${mention.sentiment}" style="font-size:11px;margin-bottom:8px;display:inline-block;">${sentimentEmoji(mention.sentiment)} ${capitalise(mention.sentiment)}</span>`
+        : "";
       const quotesHtml = (mention.quotes || [])
         .map(q => `<div class="quote" ${quoteColorStyle(mention.sentiment)}>"${escapeHtml(q)}"</div>`)
         .join("");
       const timeLabel = mention.timestamp_seconds ? ` (${formatTime(mention.timestamp_seconds)})` : "";
       return `
         <div class="mention-card" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--color-border);">
+          ${sentimentBadge}
           <div class="video-title">${escapeHtml(mention.video_title)}</div>
-          ${quotesHtml || `<div class="quote" style="opacity:0.5">No quotes extracted.</div>`}
-          <button class="watch-link" data-yt-url="${mention.youtube_url}" onclick="toggleYtEmbed(this)">▶ Watch on YouTube${timeLabel}</button>
+          ${quotesHtml || `<div class="quote" style="opacity:0.5">No direct quotes extracted.</div>`}
+          <button class="watch-link" data-yt-url="${mention.youtube_url}" onclick="event.stopPropagation();toggleYtEmbed(this)">▶ Watch on YouTube${timeLabel}</button>
         </div>`;
     }).join("");
+
+    // "Go to pin" hint — only for userListMode (located businesses)
+    const pinHintHtml = userListMode && biz.lat
+      ? `<div class="list-card-pin-hint">Click anywhere to open on map →</div>`
+      : "";
 
     card.innerHTML = `
       <div class="list-card-dot" style="background:${sentimentColor};"></div>
       <div class="list-card-content">
         <div class="list-card-name">${escapeHtml(biz.name)}</div>
         <div class="list-card-badges">${badgesHtml}</div>
+        ${addressHtml}${websiteHtml}
         ${mentionsHtml}
+        ${pinHintHtml}
       </div>
     `;
+
+    // Click card → switch to map and open side panel
+    if (userListMode && biz.lat) {
+      card.style.cursor = "pointer";
+      card.addEventListener("click", e => {
+        if (e.target.closest("button, a, .yt-embed-wrapper")) return;
+        userListMode = false;
+        const btn = document.getElementById("btn-list-toggle");
+        btn.classList.remove("active");
+        btn.textContent = "☰ List";
+        showMapView();
+        const pinIndex = visiblePins.findIndex(p => p.id === biz.id);
+        map.flyTo({ center: [biz.lng, biz.lat], zoom: 15, duration: 600 });
+        openBusinessPanel(biz.id, pinIndex >= 0 ? pinIndex : -1, biz.lat, biz.lng);
+      });
+    }
+
     container.appendChild(card);
   });
 }
@@ -802,7 +854,7 @@ document.querySelectorAll(".sentiment-btn").forEach(btn => {
 
 document.getElementById("filter-show-closed").addEventListener("change", e => {
   activeFilters.showClosed = e.target.checked;
-  if (userListMode) { listViewData = allPins; renderListView(); }
+  if (userListMode) { renderListView(); }
   else if (isListViewActive()) { renderListView(); }
   else { renderMap(allPins); renderUnlocatedStrip(); }
 });
@@ -813,7 +865,7 @@ document.getElementById("filter-search").addEventListener("input", e => {
   clearTimeout(_searchTimer);
   _searchTimer = setTimeout(() => {
     activeFilters.search = e.target.value.trim();
-    if (userListMode) { listViewData = allPins; renderListView(); }
+    if (userListMode) { renderListView(); }
     else if (isListViewActive()) { renderListView(); }
     else { renderMap(allPins); renderUnlocatedStrip(); }
   }, 200);
@@ -861,7 +913,7 @@ function isListViewActive() {
   return document.getElementById("list-view").style.display !== "none";
 }
 
-document.getElementById("btn-list-toggle").addEventListener("click", () => {
+document.getElementById("btn-list-toggle").addEventListener("click", async () => {
   const city = citiesById[activeFilters.city];
   if (city && city.is_virtual) return; // virtual cities are always list view
 
@@ -871,7 +923,9 @@ document.getElementById("btn-list-toggle").addEventListener("click", () => {
   btn.textContent = userListMode ? "🗺 Map" : "☰ List";
 
   if (userListMode) {
-    listViewData = allPins;
+    btn.disabled = true;
+    await loadListModeData();
+    btn.disabled = false;
     updateListViewHeader();
     showListView();
     renderListView();

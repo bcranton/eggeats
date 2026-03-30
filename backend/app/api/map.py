@@ -416,6 +416,79 @@ def get_no_location_businesses(
     return result
 
 
+class ListBusiness(BaseModel):
+    """Full business payload for list view."""
+    id: int
+    name: str
+    category: Optional[str]
+    is_closed: bool
+    sentiment_summary: Optional[str]
+    lat: Optional[float]
+    lng: Optional[float]
+    address: Optional[str]
+    website: Optional[str]
+    mentions: list[MentionSummary]
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/list-data", response_model=list[ListBusiness])
+@limiter.limit("30/minute")
+def get_list_data(
+    request: Request,
+    response: Response,
+    city_id: Optional[int] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Full business data (with mentions) for the list view toggle."""
+    response.headers["Cache-Control"] = MAP_DATA_CACHE
+
+    cache_key = f"list-data:{city_id}:{date_from}:{date_to}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    query = (
+        db.query(Business)
+        .filter(
+            Business.review_status == ReviewStatus.approved,
+            Business.lat.isnot(None),
+        )
+        .options(
+            joinedload(Business.mentions).joinedload(Mention.video),
+        )
+    )
+
+    if city_id:
+        query = query.filter(Business.city_id == city_id)
+    if date_from or date_to:
+        query = _apply_date_filter(query, date_from, date_to)
+
+    businesses = query.all()
+
+    result = [
+        ListBusiness(
+            id=b.id,
+            name=b.name,
+            category=b.category,
+            is_closed=b.is_closed,
+            sentiment_summary=_dominant_sentiment(b.mentions),
+            lat=b.lat,
+            lng=b.lng,
+            address=b.address,
+            website=b.website,
+            mentions=[_mention_to_summary(m) for m in b.mentions],
+        )
+        for b in businesses
+    ]
+
+    cache_set(cache_key, result)
+    return result
+
+
 @router.get("/sitemap-data", response_model=list[dict])
 @limiter.limit("10/minute")
 def get_sitemap_data(request: Request, response: Response, db: Session = Depends(get_db)):

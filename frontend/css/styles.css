@@ -373,7 +373,41 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+  margin-bottom: 6px;
+}
+
+.list-card-address {
+  font-size: 12px;
+  color: var(--color-text-muted);
   margin-bottom: 4px;
+}
+
+.list-card-website {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.list-card-website a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.list-card-website a:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+.list-card-pin-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 12px;
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.list-card:has(.list-card-pin-hint):hover .list-card-pin-hint {
+  opacity: 1;
+  color: var(--color-accent);
 }
 
 /* ── Filters ─────────────────────────────────────────── */
