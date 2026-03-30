@@ -125,6 +125,9 @@ async function bootstrap() {
     }
     await loadCities();
     await loadMapData();
+    // Open shared place link if present in URL
+    const placeId = new URLSearchParams(window.location.search).get("place");
+    if (placeId) openBusinessPanel(parseInt(placeId), -1, null, null);
   } catch (err) {
     console.error("Bootstrap error:", err);
     document.getElementById("loading").innerHTML =
@@ -382,6 +385,7 @@ function renderListView() {
 // ──────────────────────────────────────────────────────────
 
 function renderMap(pins) {
+  document.getElementById("map-empty-state").classList.add("hidden");
   let visible = activeFilters.showClosed ? pins : pins.filter(p => !p.is_closed);
   if (activeFilters.search) {
     const q = activeFilters.search.toLowerCase();
@@ -498,7 +502,13 @@ function addMarkers(visible) {
     }))
   );
 
-  renderClusters();
+  const emptyState = document.getElementById("map-empty-state");
+  if (visiblePins.length === 0) {
+    emptyState.classList.remove("hidden");
+  } else {
+    emptyState.classList.add("hidden");
+    renderClusters();
+  }
   document.getElementById("loading").classList.add("hidden");
 }
 
@@ -551,6 +561,8 @@ function renderClusters() {
       const color = SENTIMENT_COLORS[pin.sentiment_summary] || SENTIMENT_COLORS.null;
       const pinKey = `${pin.lat}:${pin.lng}`;
       const isActive = activePinKey === pinKey;
+      const isNew = pin.created_at &&
+        (Date.now() - new Date(pin.created_at).getTime()) < 30 * 24 * 60 * 60 * 1000;
 
       const el = document.createElement("div");
       el.className = "map-marker";
@@ -563,6 +575,7 @@ function renderClusters() {
               fill="${color}" stroke="white" stroke-width="2"
               opacity="${pin.is_closed ? 0.45 : 0.95}"/>
         <circle cx="14" cy="13" r="4" fill="rgba(255,255,255,0.65)"/>
+        ${isNew ? `<circle cx="22" cy="6" r="4.5" fill="#fbbf24" stroke="white" stroke-width="1.5"/>` : ""}
       </svg>`;
 
       const svg = el.querySelector("svg");
@@ -603,6 +616,20 @@ function renderClusters() {
 }
 
 // ──────────────────────────────────────────────────────────
+// URL sharing (feature 4)
+// ──────────────────────────────────────────────────────────
+
+function updateUrl(businessId) {
+  const url = new URL(window.location);
+  if (businessId) {
+    url.searchParams.set("place", businessId);
+  } else {
+    url.searchParams.delete("place");
+  }
+  history.replaceState({}, "", url);
+}
+
+// ──────────────────────────────────────────────────────────
 // Business detail panel
 // ──────────────────────────────────────────────────────────
 
@@ -614,6 +641,8 @@ async function openBusinessPanel(businessId, pinIndex, clickedLat, clickedLng) {
   if (pinIndex !== undefined) {
     currentPinIndex = pinIndex;
   }
+
+  updateUrl(businessId);
 
   // Show loading state
   document.getElementById("panel-name").textContent = "Loading\u2026";
@@ -711,6 +740,7 @@ function closePanel() {
   currentPinIndex = -1;
   setActiveMarker(null);
   hideTooltip();
+  updateUrl(null);
 }
 
 function updatePanelNav() {
@@ -938,6 +968,41 @@ function formatTime(secs) {
   const s = secs % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
+
+// ── Clear filters (empty state button) ────────────────────
+document.getElementById("btn-clear-filters").addEventListener("click", () => {
+  activeFilters.category = "";
+  activeFilters.sentiment = "";
+  activeFilters.search = "";
+  activeFilters.showClosed = true;
+  activeFilters.datePreset = "";
+  activeFilters.dateFrom = "";
+  activeFilters.dateTo = "";
+  // Reset UI controls
+  document.getElementById("filter-category").value = "";
+  document.getElementById("filter-search").value = "";
+  document.getElementById("filter-show-closed").checked = true;
+  document.querySelectorAll(".sentiment-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".date-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("date-custom-range").style.display = "none";
+  loadMapData();
+});
+
+// ── Keyboard shortcuts ─────────────────────────────────────
+document.addEventListener("keydown", e => {
+  // Don't intercept when typing in an input/textarea
+  if (e.target.matches("input, textarea, select")) return;
+  const panelOpen = document.getElementById("info-panel").classList.contains("open");
+  if (e.key === "Escape" && panelOpen) {
+    closePanel();
+  } else if (panelOpen && e.key === "ArrowRight") {
+    e.preventDefault();
+    navigateToPin(currentPinIndex + 1);
+  } else if (panelOpen && e.key === "ArrowLeft") {
+    e.preventDefault();
+    navigateToPin(currentPinIndex - 1);
+  }
+});
 
 // ── Start ──────────────────────────────────────────────────
 bootstrap();

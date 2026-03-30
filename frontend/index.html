@@ -144,6 +144,10 @@
   <!-- Center: map / list view -->
   <div class="map-wrapper">
     <div id="map"></div>
+    <div id="map-empty-state" class="map-empty-state hidden">
+      <p>No places match the current filters.</p>
+      <button class="btn btn-secondary" id="btn-clear-filters">Clear filters</button>
+    </div>
     <div id="list-view" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
       <div class="list-view-header">
         <span class="panel-heading">No Fixed Location</span>

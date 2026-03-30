@@ -788,6 +788,35 @@ select.filter-select:focus {
   justify-content: center;
 }
 
+/* ── Map empty state ─────────────────────────────────── */
+.map-empty-state {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 20px 28px;
+  text-align: center;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  pointer-events: all;
+}
+
+.map-empty-state p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.map-empty-state.hidden {
+  display: none;
+}
+
 /* ── Cluster markers ─────────────────────────────────── */
 .cluster-marker {
   width: 36px;

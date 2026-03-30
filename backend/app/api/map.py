@@ -71,6 +71,7 @@ class BusinessMapPin(BaseModel):
     sentiment_summary: Optional[str]
     mention_count: int
     city_id: int
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
