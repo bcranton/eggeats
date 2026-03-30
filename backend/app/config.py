@@ -21,9 +21,6 @@ class Settings(BaseSettings):
     # Google Places API (geocoding / business resolution)
     google_places_api_key: str = ""
 
-    # Mapbox access token (sent to frontend for map rendering)
-    mapbox_access_token: str = ""
-
     # Google OAuth
     google_client_id: str = ""
     google_client_secret: str = ""
@@ -53,7 +50,6 @@ class Settings(BaseSettings):
             "GOOGLE_CLIENT_ID": self.google_client_id,
             "GOOGLE_CLIENT_SECRET": self.google_client_secret,
             "ADMIN_EMAILS": self.admin_emails,
-            "MAPBOX_ACCESS_TOKEN": self.mapbox_access_token,
         }
         return [name for name, value in required.items() if not value]
 

@@ -89,11 +89,6 @@ def health_check():
 
 # Serve frontend static files
 if STATIC_DIR.exists():
-    # HTML pages: cache for 5 minutes in browsers.
-    # This is the key lever for Mapbox cost — a returning visitor whose browser
-    # has the page cached will NOT trigger a new mapboxgl.Map() init, so it
-    # doesn't count against the 50k free monthly map loads.
-    # JS/CSS assets get a longer cache (1 hour) since they're content-addressed.
     HTML_CACHE = "public, max-age=300, stale-while-revalidate=60"   # 5 min
     ASSET_CACHE = "public, max-age=3600, stale-while-revalidate=300" # 1 hour
 

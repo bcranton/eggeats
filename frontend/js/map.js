@@ -4,9 +4,7 @@
 
 const API = "";  // same-origin
 
-// Set by bootstrap() based on /api/config map_provider value.
-// Either mapboxgl (Mapbox) or maplibregl (OpenFreeMap).
-let mapLib = null;
+const mapLib = maplibregl;
 
 // Extract [MM/DD/YYYY] from a video title; returns a comparable number (YYYYMMDD) or 0
 function titleDate(title) {
@@ -116,17 +114,7 @@ const SENTIMENT_COLORS = {
 
 async function bootstrap() {
   try {
-    // Fetch config and cities in parallel — cities don't need config to load
-    const [config] = await Promise.all([
-      fetch(`${API}/api/config`).then(r => r.json()),
-      loadCities(),
-    ]);
-    if (config.map_provider === "openfreemap") {
-      mapLib = maplibregl;
-    } else {
-      mapLib = mapboxgl;
-      mapboxgl.accessToken = config.mapbox_access_token;
-    }
+    await loadCities();
     await loadMapData();
     // Open shared place link if present in URL
     const placeId = new URLSearchParams(window.location.search).get("place");
@@ -450,9 +438,7 @@ function fitMapToPins() {
         ? [visible[0].lng, visible[0].lat]
         : [-123.1207, 49.2827];  // fallback
 
-    const mapStyle = (mapLib === maplibregl)
-      ? "https://tiles.openfreemap.org/styles/fiord"
-      : "mapbox://styles/mapbox/navigation-night-v1";
+    const mapStyle = "https://tiles.openfreemap.org/styles/fiord";
 
     map = new mapLib.Map({
       container: "map",

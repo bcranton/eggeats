@@ -15,7 +15,7 @@ from app.api.auth import get_admin_session
 from app.database import get_db
 from app.models import (
     AdminSession, Business, City, Mention, Playlist,
-    ReviewQueue, ReviewQueueStatus, ReviewStatus, Video, ProcessingStatus, SiteSetting,
+    ReviewQueue, ReviewQueueStatus, ReviewStatus, Video, ProcessingStatus,
     Sentiment,
 )
 from app.pipeline.processor import run_pipeline
@@ -1116,52 +1116,6 @@ def get_stats(
         "total_mentions": total_mentions,
         "pending_review_queue": pending_queue,
     }
-
-
-# ---------------------------------------------------------------------------
-# Site Settings
-# ---------------------------------------------------------------------------
-
-VALID_MAP_PROVIDERS = {"mapbox", "openfreemap"}
-
-
-class SiteSettingsSchema(BaseModel):
-    map_provider: str
-
-
-@router.get("/settings", response_model=SiteSettingsSchema)
-def get_settings(
-    db: Session = Depends(get_db),
-    _session: AdminSession = Depends(get_admin_session),
-):
-    def _get(key: str, default: str) -> str:
-        row = db.query(SiteSetting).filter(SiteSetting.key == key).first()
-        return row.value if row else default
-
-    return SiteSettingsSchema(map_provider=_get("map_provider", "mapbox"))
-
-
-@router.put("/settings", response_model=SiteSettingsSchema)
-def update_settings(
-    payload: SiteSettingsSchema,
-    db: Session = Depends(get_db),
-    _session: AdminSession = Depends(get_admin_session),
-):
-    if payload.map_provider not in VALID_MAP_PROVIDERS:
-        raise HTTPException(status_code=400, detail=f"Invalid map_provider. Must be one of: {VALID_MAP_PROVIDERS}")
-
-    def _set(key: str, value: str):
-        row = db.query(SiteSetting).filter(SiteSetting.key == key).first()
-        if row:
-            row.value = value
-        else:
-            db.add(SiteSetting(key=key, value=value))
-
-    _set("map_provider", payload.map_provider)
-    db.commit()
-    from app.cache import cache_invalidate_prefix
-    cache_invalidate_prefix("config")
-    return payload
 
 
 # ---------------------------------------------------------------------------

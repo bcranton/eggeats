@@ -91,7 +91,6 @@ function setupTabs() {
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       activateTab(btn.dataset.tab);
-      if (btn.dataset.tab === "tab-settings") loadSettings();
       if (btn.dataset.tab === "tab-activity") loadActivity();
     });
   });
@@ -1077,37 +1076,6 @@ function showErr(el, msg) {
   el.style.display = "block";
 }
 
-// ── Settings tab ───────────────────────────────────────────
-async function loadSettings() {
-  try {
-    const data = await apiFetch("/api/admin/settings");
-    document.getElementById("setting-map-provider").value = data.map_provider;
-  } catch (e) {
-    console.error("Failed to load settings:", e);
-  }
-}
-
-document.getElementById("btn-save-settings").addEventListener("click", async () => {
-  const btn = document.getElementById("btn-save-settings");
-  const statusEl = document.getElementById("settings-status");
-  const mapProvider = document.getElementById("setting-map-provider").value;
-  btn.disabled = true;
-  statusEl.textContent = "";
-  try {
-    await apiFetch("/api/admin/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ map_provider: mapProvider }),
-    });
-    statusEl.style.color = "var(--color-positive)";
-    statusEl.textContent = "✓ Saved. Reload the main site to see the change.";
-  } catch (e) {
-    statusEl.style.color = "var(--color-negative)";
-    statusEl.textContent = `Failed: ${e.message}`;
-  } finally {
-    btn.disabled = false;
-  }
-});
 
 // ── Activity log ───────────────────────────────────────────
 
