@@ -258,7 +258,11 @@
       </select>
 
       <label class="field-label">Address</label>
-      <input type="text" id="add-biz-address" placeholder="123 Main St, Vancouver, BC" class="modal-input" />
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="text" id="add-biz-address" placeholder="123 Main St, Vancouver, BC" class="modal-input" style="flex:1;" />
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-geocode" title="Look up coordinates from address">📍 Lookup</button>
+      </div>
+      <p id="geocode-status" style="font-size:12px;margin:0;display:none;"></p>
 
       <div style="display:flex;gap:10px;">
         <div style="flex:1;">
