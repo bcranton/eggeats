@@ -943,7 +943,7 @@ function openAddBizModal() {
   document.getElementById("add-biz-name").focus();
 }
 
-// Geocode address → lat/lng via Nominatim (OpenStreetMap, no key needed)
+// Geocode address → lat/lng using the existing Google Places geocoder
 document.getElementById("btn-geocode").addEventListener("click", async () => {
   const address = document.getElementById("add-biz-address").value.trim();
   const statusEl = document.getElementById("geocode-status");
@@ -958,25 +958,17 @@ document.getElementById("btn-geocode").addEventListener("click", async () => {
   btn.textContent = "…";
   statusEl.style.display = "none";
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`,
-      { headers: { "Accept-Language": "en", "User-Agent": "EggEats-Admin/1.0" } }
-    );
-    const results = await res.json();
-    if (!results.length) {
-      statusEl.textContent = "No results found. Try a more specific address.";
-      statusEl.style.color = "var(--color-negative)";
-      statusEl.style.display = "block";
-      return;
-    }
-    const { lat, lon, display_name } = results[0];
-    document.getElementById("add-biz-lat").value = parseFloat(lat).toFixed(6);
-    document.getElementById("add-biz-lng").value = parseFloat(lon).toFixed(6);
-    statusEl.textContent = `✓ Found: ${display_name}`;
+    const result = await apiFetch(`/api/admin/geocode?address=${encodeURIComponent(address)}`);
+    document.getElementById("add-biz-lat").value = result.lat.toFixed(6);
+    document.getElementById("add-biz-lng").value = result.lng.toFixed(6);
+    if (result.address) document.getElementById("add-biz-address").value = result.address;
+    statusEl.textContent = `✓ Found: ${result.address || address}`;
     statusEl.style.color = "var(--color-positive)";
     statusEl.style.display = "block";
   } catch (e) {
-    statusEl.textContent = "Geocoding failed. Check your connection.";
+    statusEl.textContent = e.message === "Address not found"
+      ? "Address not found. Try being more specific."
+      : "Geocoding failed. Check that the Google Places API key is set.";
     statusEl.style.color = "var(--color-negative)";
     statusEl.style.display = "block";
   } finally {

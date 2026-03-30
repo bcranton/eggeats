@@ -646,6 +646,20 @@ def _parse_timestamp(url: str) -> Optional[int]:
     return int(m.group(1)) if m else None
 
 
+@router.get("/geocode")
+def geocode_address_endpoint(
+    address: str = Query(...),
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """Resolves an address string to lat/lng using the existing Google Places geocoder."""
+    from app.pipeline.geocoder import geocode_address
+    result = geocode_address(address)
+    if not result.get("lat"):
+        raise HTTPException(status_code=404, detail="Address not found")
+    return result
+
+
 @router.post("/businesses", status_code=201)
 def create_business(
     request: BusinessCreateRequest,
