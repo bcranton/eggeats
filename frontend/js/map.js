@@ -94,6 +94,7 @@ let activeFilters = {
   dateTo: "",       // YYYY-MM-DD (custom range)
 };
 let listViewData = []; // businesses shown in list mode
+let userListMode = false; // user toggled list view for a regular city
 let visiblePins = []; // currently rendered map pins (filtered)
 let currentPinIndex = -1; // index into visiblePins for the open panel
 let activePinKey = null;       // "lat:lng" of the currently open pin
@@ -147,6 +148,8 @@ function renderUnlocatedStrip() {
 
   let items = noLocationData;
   if (!activeFilters.showClosed) items = items.filter(b => !b.is_closed);
+  if (activeFilters.category)   items = items.filter(b => b.category === activeFilters.category);
+  if (activeFilters.sentiment)  items = items.filter(b => b.sentiment_summary === activeFilters.sentiment);
   if (activeFilters.search) {
     const q = activeFilters.search.toLowerCase();
     items = items.filter(b => b.name.toLowerCase().includes(q));
@@ -162,8 +165,10 @@ function renderUnlocatedStrip() {
   const city = citiesById[activeFilters.city];
   const cityLabel = city ? city.name : "This City";
   const count = items.length;
-  document.getElementById("unlocated-drawer-label").textContent =
-    `${count} more place${count !== 1 ? "s" : ""} without a pin in ${cityLabel}`;
+  const labelText = `${count} more place${count !== 1 ? "s" : ""} without a pin in ${cityLabel}`;
+  const labelEl = document.getElementById("unlocated-drawer-label");
+  labelEl.textContent = labelText;
+  labelEl.dataset.closedText = labelText;
 
   drawer.style.display = "flex";
 
@@ -175,17 +180,22 @@ function renderUnlocatedStrip() {
 
   // Wire up toggle once (idempotent via flag)
   const handle = document.getElementById("unlocated-drawer-handle");
+  const drawerLabel = document.getElementById("unlocated-drawer-label");
   if (!handle._drawerBound) {
     handle._drawerBound = true;
     handle.addEventListener("click", () => {
       const isOpen = drawer.classList.toggle("open");
       handle.setAttribute("aria-expanded", String(isOpen));
+      drawerLabel.textContent = isOpen
+        ? "▲ Close"
+        : drawerLabel.dataset.closedText;
     });
   }
 
   // Reset to closed state when re-rendered (city changed)
   drawer.classList.remove("open");
   handle.setAttribute("aria-expanded", "false");
+  drawerLabel.textContent = drawerLabel.dataset.closedText || labelText;
 
   body.innerHTML = "";
   items.forEach(biz => {
@@ -277,8 +287,15 @@ async function loadMapData() {
     loadNoLocationData(),
   ]);
   allPins = data;
-  showMapView();
-  renderMap(data);
+  if (userListMode) {
+    listViewData = allPins;
+    updateListViewHeader();
+    showListView();
+    renderListView();
+  } else {
+    showMapView();
+    renderMap(data);
+  }
 }
 
 // ──────────────────────────────────────────────────────────
@@ -311,6 +328,18 @@ function showListView() {
 function showMapView() {
   document.getElementById("map").style.display = "";
   document.getElementById("list-view").style.display = "none";
+}
+
+function updateListViewHeader() {
+  const city = citiesById[activeFilters.city];
+  if (userListMode) {
+    const cityName = city ? city.name : "This City";
+    document.getElementById("list-view-title").textContent = `All places in ${cityName}`;
+    document.getElementById("list-view-subtitle").textContent = "Browse all pinned locations as a list";
+  } else {
+    document.getElementById("list-view-title").textContent = "No Fixed Location";
+    document.getElementById("list-view-subtitle").textContent = "Chains and places reviewed without a specific location";
+  }
 }
 
 function renderListView() {
@@ -737,10 +766,15 @@ document.getElementById("panel-next").addEventListener("click", () => navigateTo
 document.getElementById("filter-city").addEventListener("change", e => {
   activeFilters.city = e.target.value;
   const city = citiesById[activeFilters.city];
+  // Reset list toggle when changing cities
+  userListMode = false;
+  const toggleBtn = document.getElementById("btn-list-toggle");
+  toggleBtn.classList.remove("active");
+  toggleBtn.textContent = "☰ List";
   if (city && city.is_virtual) {
     loadListView();
   } else {
-    loadMapData(); // fitMapToPins() is called inside after markers are placed
+    loadMapData();
   }
 });
 
@@ -768,7 +802,9 @@ document.querySelectorAll(".sentiment-btn").forEach(btn => {
 
 document.getElementById("filter-show-closed").addEventListener("change", e => {
   activeFilters.showClosed = e.target.checked;
-  if (isListViewActive()) { renderListView(); } else { renderMap(allPins); renderUnlocatedStrip(); }
+  if (userListMode) { listViewData = allPins; renderListView(); }
+  else if (isListViewActive()) { renderListView(); }
+  else { renderMap(allPins); renderUnlocatedStrip(); }
 });
 
 // Search — client-side, no server reload needed
@@ -777,7 +813,9 @@ document.getElementById("filter-search").addEventListener("input", e => {
   clearTimeout(_searchTimer);
   _searchTimer = setTimeout(() => {
     activeFilters.search = e.target.value.trim();
-    if (isListViewActive()) { renderListView(); } else { renderMap(allPins); renderUnlocatedStrip(); }
+    if (userListMode) { listViewData = allPins; renderListView(); }
+    else if (isListViewActive()) { renderListView(); }
+    else { renderMap(allPins); renderUnlocatedStrip(); }
   }, 200);
 });
 
@@ -822,6 +860,27 @@ document.getElementById("date-to").addEventListener("change", e => {
 function isListViewActive() {
   return document.getElementById("list-view").style.display !== "none";
 }
+
+document.getElementById("btn-list-toggle").addEventListener("click", () => {
+  const city = citiesById[activeFilters.city];
+  if (city && city.is_virtual) return; // virtual cities are always list view
+
+  userListMode = !userListMode;
+  const btn = document.getElementById("btn-list-toggle");
+  btn.classList.toggle("active", userListMode);
+  btn.textContent = userListMode ? "🗺 Map" : "☰ List";
+
+  if (userListMode) {
+    listViewData = allPins;
+    updateListViewHeader();
+    showListView();
+    renderListView();
+  } else {
+    showMapView();
+    renderMap(allPins);
+    renderUnlocatedStrip();
+  }
+});
 
 document.getElementById("panel-close").addEventListener("click", closePanel);
 

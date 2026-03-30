@@ -73,6 +73,7 @@
 <!-- City selector: full-width row so it aligns with the centered title -->
 <div class="city-bar">
   <select class="city-select" id="filter-city"></select>
+  <button class="list-toggle-btn" id="btn-list-toggle" title="Switch to list view">☰ List</button>
   <button class="mobile-filter-btn" id="mobile-filter-btn" aria-label="Open filters">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -150,8 +151,8 @@
     </div>
     <div id="list-view" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
       <div class="list-view-header">
-        <span class="panel-heading">No Fixed Location</span>
-        <span style="font-size:12px;color:var(--color-text-muted);">Chains and places reviewed without a specific location</span>
+        <span class="panel-heading" id="list-view-title">No Fixed Location</span>
+        <span id="list-view-subtitle" style="font-size:12px;color:var(--color-text-muted);">Chains and places reviewed without a specific location</span>
       </div>
       <div id="list-view-body" class="list-view-body"></div>
     </div>
@@ -198,6 +199,6 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.js"></script>
-<script src="/js/map.js?v=3"></script>
+<script src="/js/map.js?v=4"></script>
 </body>
 </html>
