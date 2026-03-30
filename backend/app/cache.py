@@ -20,8 +20,8 @@ so changes are visible on the next request without waiting for TTL expiry.
 import threading
 from cachetools import TTLCache
 
-# 1-hour TTL, max 256 cached entries (more than enough for our endpoints)
-CACHE_TTL = 3600
+# 2-hour TTL, max 256 cached entries (more than enough for our endpoints)
+CACHE_TTL = 7200
 _cache: TTLCache = TTLCache(maxsize=256, ttl=CACHE_TTL)
 _lock = threading.Lock()
 
