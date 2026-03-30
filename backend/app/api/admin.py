@@ -8,6 +8,7 @@ from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import case, func as sa_func
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.auth import get_admin_session
@@ -481,13 +482,18 @@ def delete_video_extractions(
     # Delete the mentions themselves
     db.query(Mention).filter(Mention.video_id == video_id).delete(synchronize_session=False)
 
-    # Delete businesses that now have no mentions left
+    # Delete businesses that now have no mentions left (single grouped query)
     deleted_businesses = 0
-    for biz_id in business_ids:
-        remaining = db.query(Mention).filter(Mention.business_id == biz_id).count()
-        if remaining == 0:
-            db.query(Business).filter(Business.id == biz_id).delete()
-            deleted_businesses += 1
+    if business_ids:
+        remaining_counts = dict(
+            db.query(Mention.business_id, sa_func.count(Mention.id))
+            .filter(Mention.business_id.in_(business_ids))
+            .group_by(Mention.business_id)
+            .all()
+        )
+        orphan_ids = [bid for bid in business_ids if remaining_counts.get(bid, 0) == 0]
+        if orphan_ids:
+            deleted_businesses = db.query(Business).filter(Business.id.in_(orphan_ids)).delete(synchronize_session=False)
 
     # Reset video to pending for reprocessing
     video.processing_status = ProcessingStatus.pending
@@ -1086,16 +1092,29 @@ def get_stats(
     _: AdminSession = Depends(get_admin_session),
 ):
     """Returns dashboard stats."""
+    v = db.query(
+        sa_func.count(Video.id).label("total"),
+        sa_func.count(case((Video.processing_status == ProcessingStatus.pending, 1))).label("pending"),
+        sa_func.count(case((Video.processing_status == ProcessingStatus.completed, 1))).label("completed"),
+        sa_func.count(case((Video.processing_status == ProcessingStatus.failed, 1))).label("failed"),
+    ).one()
+    b = db.query(
+        sa_func.count(Business.id).label("total"),
+        sa_func.count(case((Business.review_status == ReviewStatus.approved, 1))).label("approved"),
+        sa_func.count(case((Business.review_status == ReviewStatus.pending_review, 1))).label("pending_review"),
+    ).one()
+    total_mentions = db.query(sa_func.count(Mention.id)).scalar()
+    pending_queue = db.query(sa_func.count(ReviewQueue.id)).filter(ReviewQueue.status == ReviewQueueStatus.pending).scalar()
     return {
-        "total_videos": db.query(Video).count(),
-        "pending_videos": db.query(Video).filter(Video.processing_status == ProcessingStatus.pending).count(),
-        "completed_videos": db.query(Video).filter(Video.processing_status == ProcessingStatus.completed).count(),
-        "failed_videos": db.query(Video).filter(Video.processing_status == ProcessingStatus.failed).count(),
-        "total_businesses": db.query(Business).count(),
-        "approved_businesses": db.query(Business).filter(Business.review_status == ReviewStatus.approved).count(),
-        "pending_review_businesses": db.query(Business).filter(Business.review_status == ReviewStatus.pending_review).count(),
-        "total_mentions": db.query(Mention).count(),
-        "pending_review_queue": db.query(ReviewQueue).filter(ReviewQueue.status == ReviewQueueStatus.pending).count(),
+        "total_videos": v.total,
+        "pending_videos": v.pending,
+        "completed_videos": v.completed,
+        "failed_videos": v.failed,
+        "total_businesses": b.total,
+        "approved_businesses": b.approved,
+        "pending_review_businesses": b.pending_review,
+        "total_mentions": total_mentions,
+        "pending_review_queue": pending_queue,
     }
 
 
@@ -1140,6 +1159,8 @@ def update_settings(
 
     _set("map_provider", payload.map_provider)
     db.commit()
+    from app.cache import cache_invalidate_prefix
+    cache_invalidate_prefix("config")
     return payload
 
 

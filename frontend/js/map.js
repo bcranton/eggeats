@@ -116,14 +116,17 @@ const SENTIMENT_COLORS = {
 
 async function bootstrap() {
   try {
-    const config = await fetch(`${API}/api/config`).then(r => r.json());
+    // Fetch config and cities in parallel — cities don't need config to load
+    const [config] = await Promise.all([
+      fetch(`${API}/api/config`).then(r => r.json()),
+      loadCities(),
+    ]);
     if (config.map_provider === "openfreemap") {
       mapLib = maplibregl;
     } else {
       mapLib = mapboxgl;
       mapboxgl.accessToken = config.mapbox_access_token;
     }
-    await loadCities();
     await loadMapData();
     // Open shared place link if present in URL
     const placeId = new URLSearchParams(window.location.search).get("place");

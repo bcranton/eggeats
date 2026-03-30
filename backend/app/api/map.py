@@ -434,11 +434,16 @@ def get_sitemap_data(request: Request, response: Response, db: Session = Depends
 @router.get("/config")
 def get_frontend_config(db: Session = Depends(get_db)):
     """Returns public config values needed by frontend (Mapbox token, map provider)."""
+    cached = cache_get("config")
+    if cached is not None:
+        return cached
     from app.config import get_settings
     settings = get_settings()
     row = db.query(SiteSetting).filter(SiteSetting.key == "map_provider").first()
     map_provider = row.value if row else "mapbox"
-    return {
+    result = {
         "mapbox_access_token": settings.mapbox_access_token,
         "map_provider": map_provider,
     }
+    cache_set("config", result)
+    return result
