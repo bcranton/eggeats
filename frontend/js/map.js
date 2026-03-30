@@ -464,7 +464,16 @@ function fitMapToPins() {
     map.on("load", () => {
       addMarkers(visible);
       fitMapToPins();
-      map.on("moveend", renderClusters);
+
+      // Re-render clusters continuously during drag (RAF-throttled) so
+      // pins at the viewport edges appear/disappear without waiting for moveend.
+      let _rafPending = false;
+      function renderClustersRaf() {
+        if (_rafPending) return;
+        _rafPending = true;
+        requestAnimationFrame(() => { _rafPending = false; renderClusters(); });
+      }
+      map.on("move", renderClustersRaf);
       map.on("zoomend", renderClusters);
     });
     return;
