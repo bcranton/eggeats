@@ -180,13 +180,21 @@ def get_cities(request: Request, response: Response, db: Session = Depends(get_d
     return result
 
 
+def _parse_date(value: str, param_name: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=f"Invalid {param_name}: expected YYYY-MM-DD")
+
+
 def _apply_date_filter(query, date_from: Optional[str], date_to: Optional[str]):
     """Filter businesses to those with at least one mention in the date range."""
     video_conditions = []
     if date_from:
-        video_conditions.append(Video.published_at >= datetime.fromisoformat(date_from))
+        video_conditions.append(Video.published_at >= _parse_date(date_from, "date_from"))
     if date_to:
-        dt_to = datetime.fromisoformat(date_to).replace(hour=23, minute=59, second=59)
+        dt_to = _parse_date(date_to, "date_to").replace(hour=23, minute=59, second=59)
         video_conditions.append(Video.published_at <= dt_to)
     if not video_conditions:
         return query
