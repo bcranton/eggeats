@@ -561,7 +561,6 @@ function renderClusters() {
       const color = SENTIMENT_COLORS[pin.sentiment_summary] || SENTIMENT_COLORS.null;
       const pinKey = `${pin.lat}:${pin.lng}`;
       const isActive = activePinKey === pinKey;
-      const isNew = pin.is_recent;
 
       const el = document.createElement("div");
       el.className = "map-marker";
@@ -574,7 +573,6 @@ function renderClusters() {
               fill="${color}" stroke="white" stroke-width="2"
               opacity="${pin.is_closed ? 0.45 : 0.95}"/>
         <circle cx="14" cy="13" r="4" fill="rgba(255,255,255,0.65)"/>
-        ${isNew ? `<circle cx="22" cy="6" r="4.5" fill="#fbbf24" stroke="white" stroke-width="1.5"/>` : ""}
       </svg>`;
 
       const svg = el.querySelector("svg");

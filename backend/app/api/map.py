@@ -4,7 +4,7 @@ No authentication required.
 """
 import json
 from typing import Optional
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 import json as _json
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -71,7 +71,6 @@ class BusinessMapPin(BaseModel):
     sentiment_summary: Optional[str]
     mention_count: int
     city_id: int
-    is_recent: bool = False  # True if any video title date is within the last 30 days
 
     class Config:
         from_attributes = True
@@ -104,25 +103,9 @@ class BusinessDetail(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
-_TITLE_DATE_RE = __import__("re").compile(r'\[(\d{2})/(\d{2})/(\d{4})\]')
-
-def _has_recent_mention(mentions: list[Mention], days: int = 30) -> bool:
-    """Returns True if any mention's video title contains a date within the last N days."""
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    for m in mentions:
-        if not m.video or not m.video.title:
-            continue
-        match = _TITLE_DATE_RE.search(m.video.title)
-        if match:
-            try:
-                month, day, year = int(match.group(1)), int(match.group(2)), int(match.group(3))
-                title_dt = datetime(year, month, day, tzinfo=timezone.utc)
-                if title_dt >= cutoff:
-                    return True
-            except ValueError:
-                continue
-    return False
-
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 def _dominant_sentiment(mentions: list[Mention]) -> Optional[str]:
     """Returns the most common non-neutral sentiment across mentions."""
@@ -241,7 +224,6 @@ def get_map_data(
     if cached is not None:
         return cached
 
-    from sqlalchemy.orm import selectinload
     query = (
         db.query(Business)
         .filter(
@@ -249,7 +231,7 @@ def get_map_data(
             Business.lat.isnot(None),
             Business.lng.isnot(None),
         )
-        .options(selectinload(Business.mentions).selectinload(Mention.video))
+        .options(joinedload(Business.mentions))
     )
 
     if city_id:
@@ -279,7 +261,6 @@ def get_map_data(
             sentiment_summary=sentiment,
             mention_count=mention_count,
             city_id=b.city_id,
-            is_recent=_has_recent_mention(b.mentions),
         )
         # Primary pin
         pins.append(BusinessMapPin(lat=b.lat, lng=b.lng, **base))
