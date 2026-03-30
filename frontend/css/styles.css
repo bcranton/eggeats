@@ -830,28 +830,6 @@ select.filter-select:focus {
   display: none;
 }
 
-/* ── Cluster markers ─────────────────────────────────── */
-.cluster-marker {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: #4a6fa5;
-  border: 2px solid #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  transition: transform 0.15s;
-  user-select: none;
-}
-
-.cluster-marker:hover {
-  transform: scale(1.15);
-}
 
 /* ── Pin hover tooltip ───────────────────────────────── */
 .pin-tooltip {

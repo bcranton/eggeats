@@ -93,7 +93,6 @@ let activeFilters = {
   dateFrom: "",     // YYYY-MM-DD (custom range)
   dateTo: "",       // YYYY-MM-DD (custom range)
 };
-let superclusterIndex = null; // supercluster instance for the current pin set
 let listViewData = []; // businesses shown in list mode
 let visiblePins = []; // currently rendered map pins (filtered)
 let currentPinIndex = -1; // index into visiblePins for the open panel
@@ -454,16 +453,6 @@ function fitMapToPins() {
       addMarkers(visible);
       fitMapToPins();
 
-      // Re-render clusters continuously during drag (RAF-throttled) so
-      // pins at the viewport edges appear/disappear without waiting for moveend.
-      let _rafPending = false;
-      function renderClustersRaf() {
-        if (_rafPending) return;
-        _rafPending = true;
-        requestAnimationFrame(() => { _rafPending = false; renderClusters(); });
-      }
-      map.on("move", renderClustersRaf);
-      map.on("zoomend", renderClusters);
     });
     return;
   }
@@ -490,22 +479,12 @@ function addMarkers(visible) {
   // Sort west → east so cycle arrows feel geographic
   visiblePins.sort((a, b) => a.lng - b.lng);
 
-  // Build supercluster index; embed pinIndex in each feature's properties
-  superclusterIndex = new Supercluster({ radius: 50, maxZoom: 13 });
-  superclusterIndex.load(
-    visiblePins.map((pin, i) => ({
-      type: "Feature",
-      properties: { ...pin, pinKey: `${pin.lat}:${pin.lng}`, pinIndex: i },
-      geometry: { type: "Point", coordinates: [pin.lng, pin.lat] },
-    }))
-  );
-
   const emptyState = document.getElementById("map-empty-state");
   if (visiblePins.length === 0) {
     emptyState.classList.remove("hidden");
   } else {
     emptyState.classList.add("hidden");
-    renderClusters();
+    renderPins(visiblePins);
   }
   document.getElementById("loading").classList.add("hidden");
 }
@@ -523,42 +502,18 @@ function hideTooltip() {
   document.getElementById("pin-tooltip").classList.remove("visible");
 }
 
-// ── Cluster + pin rendering ────────────────────────────────
-function renderClusters() {
-  if (!superclusterIndex || !map) return;
+// ── Pin rendering ──────────────────────────────────────────
+function renderPins(pins) {
+  if (!map) return;
 
   currentMarkers.forEach(m => m.remove());
   currentMarkers = [];
 
-  const bounds = map.getBounds();
-  const zoom = Math.floor(map.getZoom());
-  const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
-  const clusters = superclusterIndex.getClusters(bbox, zoom);
-
-  clusters.forEach(cluster => {
-    const [lng, lat] = cluster.geometry.coordinates;
-
-    if (cluster.properties.cluster) {
-      // ── Cluster bubble ──────────────────────────────────
-      const el = document.createElement("div");
-      el.className = "cluster-marker";
-      el.textContent = cluster.properties.point_count_abbreviated;
-      el.addEventListener("click", () => {
-        const expansionZoom = Math.min(
-          superclusterIndex.getClusterExpansionZoom(cluster.id), 16
-        );
-        map.easeTo({ center: [lng, lat], zoom: expansionZoom });
-      });
-      const marker = new mapLib.Marker({ element: el, anchor: "center" })
-        .setLngLat([lng, lat]).addTo(map);
-      currentMarkers.push(marker);
-
-    } else {
-      // ── Individual pin (teardrop) ───────────────────────
-      const pin = cluster.properties;
+  pins.forEach((pin, i) => {
       const color = SENTIMENT_COLORS[pin.sentiment_summary] || SENTIMENT_COLORS.null;
       const pinKey = `${pin.lat}:${pin.lng}`;
       const isActive = activePinKey === pinKey;
+      pin.pinIndex = i;
 
       const el = document.createElement("div");
       el.className = "map-marker";
@@ -602,11 +557,10 @@ function renderClusters() {
       });
 
       const marker = new mapLib.Marker({ element: el, anchor: "bottom" })
-        .setLngLat([lng, lat]).addTo(map);
+        .setLngLat([pin.lng, pin.lat]).addTo(map);
       marker._svg = svg;
       marker._pinKey = pinKey;
       currentMarkers.push(marker);
-    }
   });
 }
 
