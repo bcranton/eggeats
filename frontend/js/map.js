@@ -173,7 +173,7 @@ function renderUnlocatedStrip() {
   const cityLabel = city ? city.name : "This City";
   const count = items.length;
   document.getElementById("unlocated-drawer-label").textContent =
-    `${count} place${count !== 1 ? "s" : ""} without a location in ${cityLabel}`;
+    `${count} more place${count !== 1 ? "s" : ""} without a pin`;
 
   drawer.style.display = "flex";
 
