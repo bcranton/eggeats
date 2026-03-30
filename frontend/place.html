@@ -147,13 +147,9 @@
       margin: 0 0 14px;
     }
 
-    /* Mentions */
-    .place-mention {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: 10px;
-      padding: 14px 16px;
-      margin-bottom: 12px;
+    /* Mentions — use .mention-card from styles.css, just add a slight indent */
+    .place-page-wrap .mention-card {
+      padding: 14px 0;
     }
 
     /* Error / loading states */
@@ -390,9 +386,12 @@
         .map(q => `<div class="quote" style="--quote-color:${color}">"${escapeHtml(q)}"</div>`)
         .join("");
       const timeLabel = m.timestamp_seconds ? ` (${formatTime(m.timestamp_seconds)})` : "";
+      const sentimentBadge = m.sentiment
+        ? `<span class="badge badge-sentiment-${m.sentiment}" style="font-size:11px;display:inline-block;margin-bottom:8px;">${sentimentEmoji(m.sentiment)} ${capitalise(m.sentiment)}</span>`
+        : "";
       return `
-        <div class="place-mention">
-          ${m.sentiment ? `<span class="badge badge-sentiment-${m.sentiment}" style="font-size:11px;display:inline-block;margin-bottom:8px;">${sentimentEmoji(m.sentiment)} ${capitalise(m.sentiment)}</span>` : ""}
+        <div class="mention-card">
+          ${sentimentBadge}
           <div class="video-title">${escapeHtml(m.video_title)}</div>
           ${quotesHtml || `<div class="quote" style="opacity:0.5">No quotes extracted.</div>`}
           <a class="watch-link" href="${escapeHtml(m.youtube_url)}" target="_blank" rel="noopener">▶ Watch on YouTube${timeLabel}</a>

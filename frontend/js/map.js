@@ -561,8 +561,7 @@ function renderClusters() {
       const color = SENTIMENT_COLORS[pin.sentiment_summary] || SENTIMENT_COLORS.null;
       const pinKey = `${pin.lat}:${pin.lng}`;
       const isActive = activePinKey === pinKey;
-      const isNew = pin.created_at &&
-        (Date.now() - new Date(pin.created_at).getTime()) < 30 * 24 * 60 * 60 * 1000;
+      const isNew = pin.is_recent;
 
       const el = document.createElement("div");
       el.className = "map-marker";
