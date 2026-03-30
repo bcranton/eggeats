@@ -92,6 +92,7 @@ function setupTabs() {
     btn.addEventListener("click", () => {
       activateTab(btn.dataset.tab);
       if (btn.dataset.tab === "tab-settings") loadSettings();
+      if (btn.dataset.tab === "tab-activity") loadActivity();
     });
   });
 
@@ -483,6 +484,7 @@ function renderBizRows() {
     const inMergeMode = mergeSourceId !== null;
 
     const tr = document.createElement("tr");
+    tr.dataset.bizId = b.id;
     if (isMergeSource) tr.style.opacity = "0.5";
 
     let actionBtns = "";
@@ -946,6 +948,75 @@ document.getElementById("btn-save-settings").addEventListener("click", async () 
     btn.disabled = false;
   }
 });
+
+// ── Activity log ───────────────────────────────────────────
+
+const SENTIMENT_ICONS = { positive: "👍", negative: "👎", neutral: "😐", mixed: "🤔" };
+
+function fmtRelative(isoStr) {
+  if (!isoStr) return "—";
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days  = Math.floor(diff / 86400000);
+  if (mins < 1)   return "just now";
+  if (mins < 60)  return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 30)  return `${days}d ago`;
+  return new Date(isoStr).toLocaleDateString();
+}
+
+async function loadActivity() {
+  const container = document.getElementById("activity-list");
+  container.innerHTML = `<div class="empty-state"><span class="spinner"></span> Loading…</div>`;
+  try {
+    const events = await apiFetch("/api/admin/activity?limit=200");
+    if (!events.length) {
+      container.innerHTML = `<div class="empty-state">No activity yet.</div>`;
+      return;
+    }
+    container.innerHTML = events.map(e => {
+      if (e.type === "business") {
+        const statusClass = e.review_status === "approved" ? "color:var(--color-positive)"
+          : e.review_status === "rejected" ? "color:var(--color-negative)"
+          : "color:var(--color-warning)";
+        return `<div class="activity-row">
+          <span class="activity-icon">🏪</span>
+          <span class="activity-body">
+            <strong><a href="#" onclick="activateBizTab(${e.id});return false;">${esc(e.name)}</a></strong>
+            <span class="activity-meta">${esc(e.city)}</span>
+            <span class="activity-badge" style="${statusClass}">${e.review_status.replace("_", " ")}</span>
+          </span>
+          <span class="activity-time" title="${e.created_at}">${fmtRelative(e.created_at)}</span>
+        </div>`;
+      } else {
+        const sentIcon = SENTIMENT_ICONS[e.sentiment] || "";
+        return `<div class="activity-row">
+          <span class="activity-icon">💬</span>
+          <span class="activity-body">
+            <strong>${esc(e.business_name)}</strong>
+            <span class="activity-meta">${esc(e.video_title)}</span>
+            ${sentIcon ? `<span class="activity-badge">${sentIcon} ${e.sentiment}</span>` : ""}
+          </span>
+          <span class="activity-time" title="${e.created_at}">${fmtRelative(e.created_at)}</span>
+        </div>`;
+      }
+    }).join("");
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state" style="color:var(--color-negative);">Failed to load activity.</div>`;
+  }
+}
+
+function activateBizTab(bizId) {
+  document.querySelector('.tab-btn[data-tab="tab-businesses"]').click();
+  // highlight row after load settles
+  setTimeout(() => {
+    const row = document.querySelector(`tr[data-biz-id="${bizId}"]`);
+    if (row) row.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 400);
+}
+
+document.getElementById("btn-refresh-activity").addEventListener("click", loadActivity);
 
 // ── Start ──────────────────────────────────────────────────
 checkAuth();

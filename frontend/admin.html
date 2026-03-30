@@ -49,6 +49,7 @@
     <button class="tab-btn active" data-tab="tab-review">Review Queue</button>
     <button class="tab-btn" data-tab="tab-videos">Videos</button>
     <button class="tab-btn" data-tab="tab-businesses">Businesses</button>
+    <button class="tab-btn" data-tab="tab-activity">Activity</button>
     <button class="tab-btn" data-tab="tab-setup">Setup</button>
     <button class="tab-btn" data-tab="tab-settings">Settings</button>
   </div>
@@ -145,6 +146,15 @@
         </tbody>
       </table>
     </div>
+  </div>
+
+  <!-- Tab: Activity -->
+  <div class="tab-panel" id="tab-activity">
+    <div class="section-header">
+      <h2>Activity Log</h2>
+      <button class="btn btn-secondary" id="btn-refresh-activity">↻ Refresh</button>
+    </div>
+    <div id="activity-list"><div class="empty-state"><span class="spinner"></span> Loading…</div></div>
   </div>
 
   <!-- Tab: Setup -->

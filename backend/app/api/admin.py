@@ -985,3 +985,56 @@ def update_settings(
     _set("map_provider", payload.map_provider)
     db.commit()
     return payload
+
+
+# ---------------------------------------------------------------------------
+# Activity log
+# ---------------------------------------------------------------------------
+
+@router.get("/activity")
+def get_activity(
+    limit: int = Query(default=100, le=500),
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """Returns recent businesses and mentions ordered by created_at desc."""
+    businesses = (
+        db.query(Business, City.name.label("city_name"))
+        .join(City, Business.city_id == City.id)
+        .order_by(Business.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    mentions = (
+        db.query(Mention, Business.name.label("business_name"), Business.id.label("business_id"), Video.title.label("video_title"))
+        .join(Business, Mention.business_id == Business.id)
+        .join(Video, Mention.video_id == Video.id)
+        .order_by(Mention.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    events = []
+    for b, city_name in businesses:
+        events.append({
+            "type": "business",
+            "id": b.id,
+            "name": b.name,
+            "city": city_name,
+            "review_status": b.review_status.value,
+            "created_at": b.created_at.isoformat() if b.created_at else None,
+        })
+    for m, biz_name, biz_id, video_title in mentions:
+        events.append({
+            "type": "mention",
+            "id": m.id,
+            "business_id": biz_id,
+            "business_name": biz_name,
+            "video_title": video_title,
+            "sentiment": m.sentiment.value if m.sentiment else None,
+            "created_at": m.created_at.isoformat() if m.created_at else None,
+        })
+
+    events.sort(key=lambda e: e["created_at"] or "", reverse=True)
+    return events[:limit]
