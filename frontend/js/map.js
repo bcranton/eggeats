@@ -439,6 +439,9 @@ function renderListView() {
         btn.classList.remove("active");
         btn.textContent = "☰ List";
         showMapView();
+        map.resize(); // recalculate canvas size after display:none
+        const pinKey = `${biz.lat}:${biz.lng}`;
+        setActiveMarker(pinKey);
         const pinIndex = visiblePins.findIndex(p => p.id === biz.id);
         map.flyTo({ center: [biz.lng, biz.lat], zoom: 15, duration: 600 });
         openBusinessPanel(biz.id, pinIndex >= 0 ? pinIndex : -1, biz.lat, biz.lng);
