@@ -107,7 +107,8 @@
   <div class="tab-panel" id="tab-businesses">
     <div class="section-header">
       <h2>All Businesses</h2>
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="btn-add-business">+ Add Business</button>
         <select id="biz-status-filter" class="btn btn-secondary" style="cursor:pointer;">
           <option value="">All</option>
           <option value="pending_review">Needs Review</option>
@@ -229,6 +230,108 @@
 
 <!-- Toast container -->
 <div id="toast-container"></div>
+
+<!-- Add Business modal -->
+<div id="add-biz-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:50;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;">
+  <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);padding:24px;width:600px;max-width:95vw;">
+    <h3 style="margin-bottom:16px;">Add Business</h3>
+
+    <!-- Business details -->
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <label class="field-label">Name <span style="color:var(--color-accent);">*</span></label>
+      <input type="text" id="add-biz-name" placeholder="e.g. Joe's Diner" class="modal-input" />
+
+      <label class="field-label">City <span style="color:var(--color-accent);">*</span></label>
+      <select id="add-biz-city" class="modal-input"><option value="">Select city…</option></select>
+
+      <label class="field-label">Category</label>
+      <select id="add-biz-category" class="modal-input">
+        <option value="">— none —</option>
+        <option value="restaurant">Restaurant</option>
+        <option value="cafe">Cafe</option>
+        <option value="bar">Bar</option>
+        <option value="bakery">Bakery</option>
+        <option value="market">Market</option>
+        <option value="shop">Shop</option>
+        <option value="attraction">Attraction</option>
+        <option value="other">Other</option>
+      </select>
+
+      <label class="field-label">Address</label>
+      <input type="text" id="add-biz-address" placeholder="123 Main St, Vancouver, BC" class="modal-input" />
+
+      <div style="display:flex;gap:10px;">
+        <div style="flex:1;">
+          <label class="field-label">Latitude</label>
+          <input type="number" id="add-biz-lat" placeholder="49.2827" step="any" class="modal-input" />
+        </div>
+        <div style="flex:1;">
+          <label class="field-label">Longitude</label>
+          <input type="number" id="add-biz-lng" placeholder="-123.1207" step="any" class="modal-input" />
+        </div>
+      </div>
+
+      <label class="field-label">Website</label>
+      <input type="url" id="add-biz-website" placeholder="https://example.com" class="modal-input" />
+
+      <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="add-biz-closed" /> Mark as permanently closed
+        </label>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label class="field-label" style="margin:0;">Status</label>
+          <select id="add-biz-status" class="modal-input" style="width:auto;">
+            <option value="approved">Approved</option>
+            <option value="pending_review">Needs Review</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="field-label">Admin Notes</label>
+      <textarea id="add-biz-notes" rows="2" placeholder="Optional internal notes…" class="modal-input" style="resize:vertical;"></textarea>
+    </div>
+
+    <!-- Mention section -->
+    <div style="margin-top:20px;border-top:1px solid var(--color-border);padding-top:16px;">
+      <div style="font-size:13px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Add a Mention <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></div>
+      <p style="font-size:12px;color:var(--color-text-muted);margin:0 0 12px;">Link this business to the YouTube video where NL mentioned it.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <label class="field-label">YouTube URL</label>
+        <input type="url" id="add-mention-url" placeholder="https://www.youtube.com/watch?v=…&t=125s" class="modal-input" />
+
+        <label class="field-label">Video Title <span style="font-size:11px;color:var(--color-text-muted);">(required if video is not already in the database)</span></label>
+        <input type="text" id="add-mention-title" placeholder="Vancouver Vlog [01/15/2024]" class="modal-input" />
+
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1;">
+            <label class="field-label">Timestamp (seconds) <span style="font-size:11px;color:var(--color-text-muted);">auto-parsed from URL</span></label>
+            <input type="number" id="add-mention-ts" placeholder="125" class="modal-input" />
+          </div>
+          <div style="flex:1;">
+            <label class="field-label">Sentiment</label>
+            <select id="add-mention-sentiment" class="modal-input">
+              <option value="">— none —</option>
+              <option value="positive">👍 Positive</option>
+              <option value="negative">👎 Negative</option>
+              <option value="neutral">😐 Neutral</option>
+              <option value="mixed">🤔 Mixed</option>
+            </select>
+          </div>
+        </div>
+
+        <label class="field-label">Quotes <span style="font-size:11px;color:var(--color-text-muted);">one per line</span></label>
+        <textarea id="add-mention-quotes" rows="3" placeholder='e.g. "Best egg tarts in the city"' class="modal-input" style="resize:vertical;"></textarea>
+      </div>
+    </div>
+
+    <p id="add-biz-error" style="color:var(--color-negative);font-size:13px;margin-top:10px;display:none;"></p>
+
+    <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-secondary" id="add-biz-cancel">Cancel</button>
+      <button class="btn btn-primary" id="add-biz-save">Save Business</button>
+    </div>
+  </div>
+</div>
 
 <!-- Edit business modal -->
 <div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:50;align-items:center;justify-content:center;">

@@ -917,6 +917,132 @@ document.getElementById("btn-create-virtual-city").addEventListener("click", asy
   }
 });
 
+// ── Add Business modal ─────────────────────────────────────
+
+function openAddBizModal() {
+  // Reset all fields
+  ["add-biz-name","add-biz-address","add-biz-website","add-biz-notes",
+   "add-mention-url","add-mention-title","add-mention-quotes"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  ["add-biz-lat","add-biz-lng","add-mention-ts"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  document.getElementById("add-biz-closed").checked = false;
+  document.getElementById("add-biz-status").value = "approved";
+  document.getElementById("add-biz-category").value = "";
+  document.getElementById("add-mention-sentiment").value = "";
+  document.getElementById("add-biz-error").style.display = "none";
+
+  // Populate city dropdown
+  const sel = document.getElementById("add-biz-city");
+  sel.innerHTML = `<option value="">Select city…</option>` +
+    citiesList.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+
+  document.getElementById("add-biz-modal").style.display = "flex";
+  document.getElementById("add-biz-name").focus();
+}
+
+// Auto-parse timestamp from YouTube URL into the timestamp field
+document.getElementById("add-mention-url").addEventListener("blur", function () {
+  const url = this.value.trim();
+  if (!url) return;
+  const tsField = document.getElementById("add-mention-ts");
+  if (tsField.value) return; // don't overwrite if already set
+  const m = url.match(/[?&]t=(\d+)/);
+  if (m) tsField.value = m[1];
+});
+
+document.getElementById("btn-add-business").addEventListener("click", openAddBizModal);
+document.getElementById("add-biz-cancel").addEventListener("click", () => {
+  document.getElementById("add-biz-modal").style.display = "none";
+});
+
+document.getElementById("add-biz-save").addEventListener("click", async () => {
+  const btn = document.getElementById("add-biz-save");
+  const errEl = document.getElementById("add-biz-error");
+  errEl.style.display = "none";
+
+  const name = document.getElementById("add-biz-name").value.trim();
+  const cityId = parseInt(document.getElementById("add-biz-city").value);
+  if (!name) { showErr(errEl, "Name is required."); return; }
+  if (!cityId) { showErr(errEl, "Please select a city."); return; }
+
+  const latRaw = document.getElementById("add-biz-lat").value.trim();
+  const lngRaw = document.getElementById("add-biz-lng").value.trim();
+
+  const bizPayload = {
+    name,
+    city_id: cityId,
+    category: document.getElementById("add-biz-category").value || null,
+    lat: latRaw ? parseFloat(latRaw) : null,
+    lng: lngRaw ? parseFloat(lngRaw) : null,
+    address: document.getElementById("add-biz-address").value.trim() || null,
+    website: document.getElementById("add-biz-website").value.trim() || null,
+    is_closed: document.getElementById("add-biz-closed").checked,
+    review_status: document.getElementById("add-biz-status").value,
+    admin_notes: document.getElementById("add-biz-notes").value.trim() || null,
+  };
+
+  btn.disabled = true;
+  btn.textContent = "Saving…";
+
+  try {
+    const created = await apiFetch("/api/admin/businesses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bizPayload),
+    });
+
+    // Optionally add a mention
+    const ytUrl = document.getElementById("add-mention-url").value.trim();
+    if (ytUrl) {
+      const tsRaw = document.getElementById("add-mention-ts").value.trim();
+      const quotesText = document.getElementById("add-mention-quotes").value.trim();
+      const quotes = quotesText
+        ? quotesText.split("\n").map(q => q.trim()).filter(Boolean)
+        : [];
+
+      const mentionPayload = {
+        youtube_url: ytUrl,
+        video_title: document.getElementById("add-mention-title").value.trim(),
+        timestamp_seconds: tsRaw ? parseInt(tsRaw) : null,
+        sentiment: document.getElementById("add-mention-sentiment").value || null,
+        quotes,
+      };
+
+      try {
+        await apiFetch(`/api/admin/businesses/${created.id}/mentions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(mentionPayload),
+        });
+      } catch (me) {
+        // Business was created — warn but don't block
+        toast(`Business saved, but mention failed: ${me.message}`, "error");
+        document.getElementById("add-biz-modal").style.display = "none";
+        loadBusinesses(); loadStats();
+        return;
+      }
+    }
+
+    document.getElementById("add-biz-modal").style.display = "none";
+    toast(`"${esc(created.name)}" added successfully.`, "success");
+    loadBusinesses(); loadStats();
+
+  } catch (e) {
+    showErr(errEl, e.message || "Failed to save business.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Save Business";
+  }
+});
+
+function showErr(el, msg) {
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
 // ── Settings tab ───────────────────────────────────────────
 async function loadSettings() {
   try {

@@ -456,3 +456,28 @@ tbody td { padding: 12px 14px; vertical-align: middle; }
   color: var(--color-text-muted);
   white-space: nowrap;
 }
+
+/* ── Modal shared field styles ────────────────────────── */
+.field-label {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+  display: block;
+}
+
+.modal-input {
+  padding: 8px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}

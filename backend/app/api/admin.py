@@ -15,6 +15,7 @@ from app.database import get_db
 from app.models import (
     AdminSession, Business, City, Mention, Playlist,
     ReviewQueue, ReviewQueueStatus, ReviewStatus, Video, ProcessingStatus, SiteSetting,
+    Sentiment,
 )
 from app.pipeline.processor import run_pipeline
 
@@ -118,6 +119,27 @@ class MentionDetail(BaseModel):
 class MentionUpdateRequest(BaseModel):
     sentiment: Optional[str] = None
     quotes: Optional[list[str]] = None
+
+
+class BusinessCreateRequest(BaseModel):
+    name: str
+    city_id: int
+    category: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    address: Optional[str] = None
+    website: Optional[str] = None
+    is_closed: bool = False
+    review_status: str = "approved"
+    admin_notes: Optional[str] = None
+
+
+class ManualMentionRequest(BaseModel):
+    youtube_url: str       # full watch URL or bare video ID
+    video_title: str       # used when video isn't in the DB yet
+    timestamp_seconds: Optional[int] = None
+    sentiment: Optional[str] = None
+    quotes: list[str] = []
 
 
 class MergeRequest(BaseModel):
@@ -603,6 +625,126 @@ def get_businesses(
         ))
 
     return result
+
+
+def _parse_youtube_id(url_or_id: str) -> Optional[str]:
+    """Extract YouTube video ID from a watch URL, short URL, or bare ID."""
+    import re
+    url_or_id = url_or_id.strip()
+    # Already a bare ID (11 chars, alphanumeric + dash + underscore)
+    if re.fullmatch(r"[\w-]{11}", url_or_id):
+        return url_or_id
+    # youtu.be/ID or youtube.com/watch?v=ID or /shorts/ID or /embed/ID
+    m = re.search(r"(?:youtu\.be/|[?&/]v[=/]|/embed/|/shorts/)([A-Za-z0-9_-]{11})", url_or_id)
+    return m.group(1) if m else None
+
+
+def _parse_timestamp(url: str) -> Optional[int]:
+    """Extract ?t=Ns or &t=Ns from a YouTube URL."""
+    import re
+    m = re.search(r"[?&]t=(\d+)", url)
+    return int(m.group(1)) if m else None
+
+
+@router.post("/businesses", status_code=201)
+def create_business(
+    request: BusinessCreateRequest,
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """Manually creates a new business."""
+    city = db.query(City).filter(City.id == request.city_id).first()
+    if not city:
+        raise HTTPException(status_code=400, detail=f"City {request.city_id} not found")
+
+    valid_statuses = {s.value for s in ReviewStatus}
+    if request.review_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid review_status: {request.review_status}")
+
+    biz = Business(
+        name=request.name.strip(),
+        city_id=request.city_id,
+        category=request.category,
+        lat=request.lat,
+        lng=request.lng,
+        address=request.address,
+        website=request.website,
+        is_closed=request.is_closed,
+        review_status=ReviewStatus(request.review_status),
+        admin_notes=request.admin_notes,
+    )
+    db.add(biz)
+    db.commit()
+    db.refresh(biz)
+
+    from app.cache import cache_invalidate_prefix
+    cache_invalidate_prefix("map-data")
+    cache_invalidate_prefix("cities")
+
+    return {"id": biz.id, "name": biz.name}
+
+
+@router.post("/businesses/{business_id}/mentions", status_code=201)
+def add_manual_mention(
+    business_id: int,
+    request: ManualMentionRequest,
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """Manually adds a mention to an existing business, creating the video record if needed."""
+    biz = db.query(Business).filter(Business.id == business_id).first()
+    if not biz:
+        raise HTTPException(status_code=404, detail="Business not found")
+
+    youtube_video_id = _parse_youtube_id(request.youtube_url)
+    if not youtube_video_id:
+        raise HTTPException(status_code=400, detail="Could not extract a YouTube video ID from the URL provided")
+
+    # Use timestamp from URL if not supplied explicitly
+    ts = request.timestamp_seconds
+    if ts is None:
+        ts = _parse_timestamp(request.youtube_url)
+
+    # Find or create the Video record
+    video = db.query(Video).filter(Video.youtube_video_id == youtube_video_id).first()
+    if not video:
+        playlist = db.query(Playlist).filter(Playlist.city_id == biz.city_id).first()
+        if not playlist:
+            raise HTTPException(
+                status_code=400,
+                detail="No playlist found for this business's city. Add a playlist via Setup first.",
+            )
+        video = Video(
+            youtube_video_id=youtube_video_id,
+            playlist_id=playlist.id,
+            title=request.video_title.strip() or youtube_video_id,
+            processing_status=ProcessingStatus.completed,
+            processed_at=datetime.now(timezone.utc),
+        )
+        db.add(video)
+        db.flush()
+
+    sentiment = None
+    if request.sentiment and request.sentiment in {s.value for s in Sentiment}:
+        sentiment = Sentiment(request.sentiment)
+
+    mention = Mention(
+        business_id=biz.id,
+        video_id=video.id,
+        timestamp_seconds=ts,
+        raw_business_name=biz.name,
+        sentiment=sentiment,
+        quotes_json=json.dumps([q for q in request.quotes if q.strip()]) if request.quotes else None,
+    )
+    db.add(mention)
+    db.commit()
+    db.refresh(mention)
+
+    from app.cache import cache_invalidate_prefix
+    cache_invalidate_prefix("map-data")
+    cache_invalidate_prefix(f"business:{business_id}")
+
+    return {"id": mention.id, "video_id": video.id, "video_title": video.title}
 
 
 @router.put("/businesses/{business_id}")
