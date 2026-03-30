@@ -929,9 +929,9 @@ document.getElementById("btn-list-toggle").addEventListener("click", async () =>
     renderListView();
   } else {
     showMapView();
+    if (map) map.resize(); // recalculate canvas size after display:none
     renderMap(allPins);
     renderUnlocatedStrip();
-    fitMapToPins();
   }
 });
 
