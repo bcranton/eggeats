@@ -824,14 +824,14 @@ select.filter-select:focus {
   flex-wrap: wrap;
 }
 
-.info-panel-address a.street-view-link {
+.address-row a.street-view-link {
   color: #60a5fa;
   white-space: nowrap;
   flex-shrink: 0;
   text-decoration: none;
 }
 
-.info-panel-address a.street-view-link:hover {
+.address-row a.street-view-link:hover {
   text-decoration: underline;
 }
 

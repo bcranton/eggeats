@@ -453,10 +453,7 @@ def get_list_data(
 
     query = (
         db.query(Business)
-        .filter(
-            Business.review_status == ReviewStatus.approved,
-            Business.lat.isnot(None),
-        )
+        .filter(Business.review_status == ReviewStatus.approved)
         .options(
             joinedload(Business.mentions).joinedload(Mention.video),
         )

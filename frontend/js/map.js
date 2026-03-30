@@ -385,13 +385,11 @@ function renderListView() {
     ].filter(Boolean).join("");
 
     // Address + street view
-    const addressHtml = biz.address
-      ? `<div class="list-card-address">${escapeHtml(biz.address)}${
-          biz.lat && biz.lng
-            ? ` <a href="https://www.google.com/maps?q=&layer=c&cbll=${biz.lat},${biz.lng}" target="_blank" rel="noopener" class="street-view-link" onclick="event.stopPropagation()">📍 Street View</a>`
-            : ""
-        }</div>`
+    const addrText = biz.address ? escapeHtml(biz.address) : `<span style="opacity:0.5">No address available</span>`;
+    const svLink = (biz.lat && biz.lng)
+      ? ` <a href="https://www.google.com/maps?q=&layer=c&cbll=${biz.lat},${biz.lng}" target="_blank" rel="noopener" class="street-view-link" onclick="event.stopPropagation()">📍 Street View</a>`
       : "";
+    const addressHtml = `<div class="list-card-address"><div class="address-row">${addrText}${svLink}</div></div>`;
 
     // Website
     const websiteHtml = biz.website
@@ -933,6 +931,7 @@ document.getElementById("btn-list-toggle").addEventListener("click", async () =>
     showMapView();
     renderMap(allPins);
     renderUnlocatedStrip();
+    fitMapToPins();
   }
 });
 
