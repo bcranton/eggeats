@@ -258,6 +258,7 @@ def get_map_data(
             sentiment_summary=sentiment,
             mention_count=mention_count,
             city_id=b.city_id,
+            created_at=b.created_at,
         )
         # Primary pin
         pins.append(BusinessMapPin(lat=b.lat, lng=b.lng, **base))
