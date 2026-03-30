@@ -698,7 +698,8 @@ select.filter-select:focus {
   border-top: 1px solid var(--color-border);
 }
 
-.mention-card .video-title {
+.mention-card .video-title,
+.place-mention .video-title {
   font-size: 11px;
   font-weight: 500;
   color: var(--color-text-muted);
@@ -708,7 +709,8 @@ select.filter-select:focus {
   letter-spacing: 0.4px;
 }
 
-.mention-card .quote {
+.mention-card .quote,
+.place-mention .quote {
   font-size: 14px;
   color: var(--color-text);
   line-height: 1.65;
@@ -718,7 +720,8 @@ select.filter-select:focus {
   margin-bottom: 8px;
 }
 
-.mention-card .watch-link {
+.mention-card .watch-link,
+.place-mention .watch-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -732,10 +735,12 @@ select.filter-select:focus {
   border: 1px solid var(--color-accent);
   border-radius: 4px;
   cursor: pointer;
+  text-decoration: none;
   transition: background 0.15s, color 0.15s;
 }
 
-.mention-card .watch-link:hover {
+.mention-card .watch-link:hover,
+.place-mention .watch-link:hover {
   background: var(--color-accent);
   color: #fff;
 }
@@ -1116,11 +1121,13 @@ select.filter-select:focus {
     font-size: 19px;
   }
 
-  .mention-card .video-title {
+  .mention-card .video-title,
+  .place-mention .video-title {
     font-size: 11px;
   }
 
-  .mention-card .quote {
+  .mention-card .quote,
+  .place-mention .quote {
     font-size: 15px;
   }
 
