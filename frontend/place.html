@@ -24,6 +24,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Oswald:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- MapLibre -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.css" />
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.js"></script>
+
   <link rel="stylesheet" href="/css/styles.css" />
 
   <style>
@@ -105,6 +110,24 @@
       margin-bottom: 20px;
     }
     .place-website:hover { text-decoration: underline; }
+
+    /* Map embed */
+    .place-map-embed {
+      width: 100%;
+      height: 260px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--color-border);
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .place-map-embed .maplibregl-map {
+      width: 100%;
+      height: 100%;
+    }
+    /* Hide MapLibre attribution logo to keep it clean */
+    .place-map-embed .maplibregl-ctrl-logo { display: none !important; }
+    .place-map-embed .maplibregl-ctrl-attrib { font-size: 9px; opacity: 0.5; }
 
     /* Divider */
     .place-divider {
@@ -261,6 +284,52 @@
     return match ? parseInt(match[1], 10) : null;
   }
 
+  // ── Mini map ─────────────────────────────────────────────────
+
+  function initPlaceMap(containerId, locations, sentimentColor) {
+    const coords = locations.filter(l => l.lat && l.lng);
+    if (!coords.length) return;
+
+    const map = new maplibregl.Map({
+      container: containerId,
+      style: "https://tiles.openfreemap.org/styles/fiord",
+      center: [coords[0].lng, coords[0].lat],
+      zoom: 15,
+      interactive: true,
+      attributionControl: true,
+    });
+
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+
+    map.on("load", () => {
+      // Add a teardrop pin for each location
+      coords.forEach(loc => {
+        const el = document.createElement("div");
+        el.style.cssText = "width:28px;height:36px;cursor:default;";
+        el.innerHTML = `<svg width="28" height="36" viewBox="0 0 28 36"
+            xmlns="http://www.w3.org/2000/svg" style="display:block;">
+          <path d="M14 1C6.8 1 1 6.8 1 14C1 23 14 35 14 35C14 35 27 23 27 14C27 6.8 21.2 1 14 1Z"
+                fill="${sentimentColor}" stroke="white" stroke-width="2" opacity="0.95"/>
+          <circle cx="14" cy="13" r="4" fill="rgba(255,255,255,0.65)"/>
+        </svg>`;
+
+        new maplibregl.Marker({ element: el, anchor: "bottom" })
+          .setLngLat([loc.lng, loc.lat])
+          .addTo(map);
+      });
+
+      // If multiple locations, fit to bounds
+      if (coords.length > 1) {
+        const lngs = coords.map(c => c.lng);
+        const lats = coords.map(c => c.lat);
+        map.fitBounds(
+          [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+          { padding: 60, maxZoom: 15, duration: 0 }
+        );
+      }
+    });
+  }
+
   // ── Render ───────────────────────────────────────────────────
 
   function renderPlace(biz) {
@@ -343,6 +412,11 @@
          </a>`
       : "";
 
+    const hasMap = (biz.locations || []).some(l => l.lat && l.lng);
+    const mapHtml = hasMap
+      ? `<div class="place-map-embed"><div id="place-map" style="width:100%;height:100%;"></div></div>`
+      : "";
+
     const mentionsHtml = sortMentions(biz.mentions || []).map(m => {
       const color = SENTIMENT_COLORS[m.sentiment] || "#888899";
       const quotesHtml = (m.quotes || [])
@@ -375,6 +449,8 @@
         ${websiteHtml}
       </header>
 
+      ${mapHtml}
+
       <hr class="place-divider" />
 
       <p class="place-section-heading">Northernlion's Mentions (${biz.mentions.length})</p>
@@ -386,6 +462,11 @@
         <a href="/">View Full Map →</a>
       </div>
     `;
+
+    // Init the mini map after the DOM is ready
+    if (hasMap) {
+      initPlaceMap("place-map", biz.locations, sentimentColor);
+    }
   }
 
   function dominantSentiment(mentions) {
