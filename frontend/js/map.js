@@ -328,6 +328,7 @@ function showListView() {
 function showMapView() {
   document.getElementById("map").style.display = "";
   document.getElementById("list-view").style.display = "none";
+  if (map) map.resize();
 }
 
 async function loadListModeData() {
@@ -439,7 +440,6 @@ function renderListView() {
         btn.classList.remove("active");
         btn.textContent = "☰ List";
         showMapView();
-        map.resize(); // recalculate canvas size after display:none
         const pinKey = `${biz.lat}:${biz.lng}`;
         setActiveMarker(pinKey);
         const pinIndex = visiblePins.findIndex(p => p.id === biz.id);
@@ -819,12 +819,13 @@ document.getElementById("panel-next").addEventListener("click", () => navigateTo
 document.getElementById("filter-city").addEventListener("change", e => {
   activeFilters.city = e.target.value;
   const city = citiesById[activeFilters.city];
-  // Reset list toggle when changing cities
-  userListMode = false;
-  const toggleBtn = document.getElementById("btn-list-toggle");
-  toggleBtn.classList.remove("active");
-  toggleBtn.textContent = "☰ List";
+  // Virtual cities are always list view — exit user list mode so the
+  // toggle button doesn't show as active for a virtual city
   if (city && city.is_virtual) {
+    userListMode = false;
+    const toggleBtn = document.getElementById("btn-list-toggle");
+    toggleBtn.classList.remove("active");
+    toggleBtn.textContent = "☰ List";
     loadListView();
   } else {
     loadMapData();
@@ -932,7 +933,6 @@ document.getElementById("btn-list-toggle").addEventListener("click", async () =>
     renderListView();
   } else {
     showMapView();
-    if (map) map.resize(); // recalculate canvas size after display:none
     renderMap(allPins);
     renderUnlocatedStrip();
   }
