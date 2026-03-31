@@ -17,7 +17,7 @@ from pydantic import BaseModel
 limiter = Limiter(key_func=get_remote_address)
 
 # Browser cache header: 5-minute TTL, matches server-side cache below.
-MAP_DATA_CACHE = "public, max-age=7200, stale-while-revalidate=300"
+MAP_DATA_CACHE = "public, max-age=7200"
 
 from sqlalchemy import func as sa_func
 
