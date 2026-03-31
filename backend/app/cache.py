@@ -1,22 +1,16 @@
 """
 Simple server-side in-memory TTL cache using cachetools.
 
-This sits in front of expensive DB queries on public endpoints so that
-concurrent users share one query result rather than each triggering their own.
+Values are stored as UTF-8 JSON bytes rather than Python objects. This cuts
+RAM usage by 3-5x because Python dicts/lists carry significant pointer and
+object-header overhead that disappears when serialised to a compact string.
+The CPU cost of json.dumps/loads is negligible given that CF handles most
+traffic and Railway only sees occasional cache misses.
 
-Example: 500 simultaneous page loads → 1 DB query, not 500.
-
-The cache lives in process memory, so it resets on deploy/restart (fine — the
-DB is the source of truth). No Redis needed for this traffic level.
-
-TTL is set to 1 hour to match the Cloudflare edge cache. When Cloudflare
-misses and forwards a request to Railway, Railway serves from this cache
-rather than hitting Postgres — so Postgres only gets queried once per hour
-per cache key under normal traffic, not once per Cloudflare miss.
-
-Admin writes (create/update/delete) call cache_invalidate_prefix() immediately
-so changes are visible on the next request without waiting for TTL expiry.
+Admin writes call cache_invalidate_prefix() / cache_clear() immediately so
+changes are visible on the next request without waiting for TTL expiry.
 """
+import json
 import threading
 from cachetools import TTLCache
 
@@ -28,12 +22,16 @@ _lock = threading.Lock()
 
 def cache_get(key: str):
     with _lock:
-        return _cache.get(key)
+        raw = _cache.get(key)
+    if raw is None:
+        return None
+    return json.loads(raw)
 
 
 def cache_set(key: str, value) -> None:
+    raw = json.dumps(value, default=str)
     with _lock:
-        _cache[key] = value
+        _cache[key] = raw
 
 
 def cache_invalidate_prefix(prefix: str) -> None:

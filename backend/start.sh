@@ -8,11 +8,11 @@ echo "=== testing python import ==="
 python -c "from app.main import app; print('Import OK')"
 
 echo "=== starting gunicorn ==="
-# 4 uvicorn workers: enough to saturate Railway's cores without
-# exhausting the Postgres connection pool (4 workers × 10 pool = 40 conns).
+# 2 uvicorn workers: CF edge cache handles public traffic, so Railway only
+# sees cache misses and admin ops — 2 workers is plenty and halves RAM usage.
 exec gunicorn app.main:app \
   -k uvicorn.workers.UvicornWorker \
-  --workers 4 \
+  --workers 2 \
   --bind "0.0.0.0:${PORT:-8000}" \
   --timeout 120 \
   --keep-alive 5 \
