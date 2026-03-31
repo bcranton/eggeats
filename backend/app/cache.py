@@ -13,6 +13,7 @@ changes are visible on the next request without waiting for TTL expiry.
 import json
 import threading
 from cachetools import TTLCache
+from fastapi.encoders import jsonable_encoder
 
 # 2-hour TTL, max 256 cached entries (more than enough for our endpoints)
 CACHE_TTL = 7200
@@ -29,7 +30,7 @@ def cache_get(key: str):
 
 
 def cache_set(key: str, value) -> None:
-    raw = json.dumps(value, default=str)
+    raw = json.dumps(jsonable_encoder(value))
     with _lock:
         _cache[key] = raw
 
