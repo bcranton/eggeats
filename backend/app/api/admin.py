@@ -3,15 +3,16 @@ Admin API endpoints.
 All routes require a valid admin session (Google OAuth).
 """
 import json
+import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import case, func as sa_func
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.auth import get_admin_session
+from app.api.auth import get_admin_session, get_admin_session_optional
 from app.database import get_db
 from app.models import (
     AdminSession, Business, City, Mention, Playlist,
@@ -519,9 +520,14 @@ def delete_video_extractions(
 def run_pipeline_endpoint(
     request: PipelineRunRequest,
     background_tasks: BackgroundTasks,
-    _: AdminSession = Depends(get_admin_session),
+    req: Request,
+    session: AdminSession | None = Depends(get_admin_session_optional),
 ):
-    """Triggers the processing pipeline in the background."""
+    """Triggers the processing pipeline in the background. Accepts admin session or X-Cron-Secret header."""
+    cron_secret = os.environ.get("CRON_SECRET", "")
+    provided = req.headers.get("X-Cron-Secret", "")
+    if not session and not (cron_secret and provided == cron_secret):
+        raise HTTPException(status_code=401, detail="Not authenticated")
     background_tasks.add_task(
         _run_pipeline_bg,
         only_new=request.only_new,

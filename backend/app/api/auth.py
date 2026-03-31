@@ -56,6 +56,24 @@ def get_admin_session(
     return session
 
 
+def get_admin_session_optional(
+    admin_token: str | None = Cookie(default=None),
+    db: Session = Depends(get_db),
+) -> AdminSession | None:
+    """Like get_admin_session but returns None instead of raising if not authenticated."""
+    if not admin_token:
+        return None
+    token_hash = _hash_token(admin_token)
+    return (
+        db.query(AdminSession)
+        .filter(
+            AdminSession.token_hash == token_hash,
+            AdminSession.expires_at > datetime.now(timezone.utc),
+        )
+        .first()
+    )
+
+
 @router.get("/google")
 def google_login(request: Request):
     """Redirects to Google OAuth consent screen."""
