@@ -402,6 +402,68 @@ async function clearExtractions(videoId, btn) {
 document.getElementById("btn-refresh-videos").addEventListener("click", loadVideos);
 document.getElementById("hide-completed-videos").addEventListener("change", renderVideos);
 
+// ── Add custom video ────────────────────────────────────────
+
+document.getElementById("btn-show-add-video").addEventListener("click", async () => {
+  const form = document.getElementById("add-video-form");
+  const visible = form.style.display !== "none";
+  form.style.display = visible ? "none" : "block";
+  if (!visible) {
+    document.getElementById("add-video-url").focus();
+    // Populate playlist selector if multiple playlists exist
+    try {
+      const playlists = await apiFetch("/api/admin/playlists");
+      const sel = document.getElementById("add-video-playlist");
+      if (playlists.length > 1) {
+        sel.innerHTML = playlists.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+        sel.style.display = "";
+      }
+    } catch (_) {}
+  }
+});
+
+document.getElementById("btn-add-video-cancel").addEventListener("click", () => {
+  document.getElementById("add-video-form").style.display = "none";
+  document.getElementById("add-video-url").value = "";
+  document.getElementById("add-video-error").style.display = "none";
+});
+
+document.getElementById("btn-add-video-submit").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-add-video-submit");
+  const urlInput = document.getElementById("add-video-url");
+  const errEl = document.getElementById("add-video-error");
+  const playlistSel = document.getElementById("add-video-playlist");
+
+  errEl.style.display = "none";
+  const url = urlInput.value.trim();
+  if (!url) { errEl.textContent = "Please enter a YouTube URL."; errEl.style.display = ""; return; }
+
+  btn.disabled = true;
+  btn.textContent = "Adding…";
+
+  const body = { url };
+  if (playlistSel.style.display !== "none" && playlistSel.value) body.playlist_id = parseInt(playlistSel.value);
+
+  try {
+    const video = await apiFetch("/api/admin/videos/add", { method: "POST", body: JSON.stringify(body) });
+    toast(`Added "${video.title}" — processing started`, "success");
+    document.getElementById("add-video-form").style.display = "none";
+    urlInput.value = "";
+    // Add the new video to the top of the table immediately
+    videosData.unshift(video);
+    renderVideos();
+    // Show the video in the table even if "hide completed" is on
+    document.getElementById("hide-completed-videos").checked = false;
+    renderVideos();
+  } catch (e) {
+    errEl.textContent = e.message || "Failed to add video.";
+    errEl.style.display = "";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Add & Process";
+  }
+});
+
 let pipelinePoller = null;
 
 function startPipelinePolling() {

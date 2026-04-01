@@ -171,6 +171,11 @@ class PipelineRunRequest(BaseModel):
     video_id: Optional[int] = None
 
 
+class AddVideoRequest(BaseModel):
+    url: str
+    playlist_id: Optional[int] = None
+
+
 class SeedRequest(BaseModel):
     city_name: str = "Vancouver"
     country: str = "CA"
@@ -381,6 +386,20 @@ def resolve_review_item(
 
 
 # ---------------------------------------------------------------------------
+# Playlists
+# ---------------------------------------------------------------------------
+
+@router.get("/playlists")
+def get_playlists(
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """Lists all playlists (for video assignment)."""
+    playlists = db.query(Playlist).order_by(Playlist.id).all()
+    return [{"id": p.id, "name": p.name} for p in playlists]
+
+
+# ---------------------------------------------------------------------------
 # Videos
 # ---------------------------------------------------------------------------
 
@@ -417,6 +436,95 @@ def get_videos(
         )
         for v in videos
     ]
+
+
+@router.post("/videos/add", response_model=VideoStatus)
+def add_video(
+    request: AddVideoRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """Adds a YouTube video by URL and queues it for processing."""
+    from urllib.parse import urlparse, parse_qs
+    import re
+
+    # Parse video ID from URL or bare ID
+    url = request.url.strip()
+    youtube_video_id = None
+    parsed = urlparse(url)
+    if parsed.netloc in ("youtu.be",):
+        youtube_video_id = parsed.path.lstrip("/").split("/")[0]
+    elif parsed.netloc in ("www.youtube.com", "youtube.com"):
+        qs = parse_qs(parsed.query)
+        youtube_video_id = qs.get("v", [None])[0]
+    elif re.match(r'^[A-Za-z0-9_-]{11}$', url):
+        youtube_video_id = url
+
+    if not youtube_video_id or not re.match(r'^[A-Za-z0-9_-]{11}$', youtube_video_id):
+        raise HTTPException(status_code=400, detail="Could not parse a valid YouTube video ID from the URL")
+
+    # Check for duplicate
+    existing = db.query(Video).filter(Video.youtube_video_id == youtube_video_id).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Video already exists (status: {existing.processing_status.value})")
+
+    # Resolve playlist
+    playlist_id = request.playlist_id
+    if not playlist_id:
+        first_playlist = db.query(Playlist).first()
+        if not first_playlist:
+            raise HTTPException(status_code=400, detail="No playlists configured — seed the database first")
+        playlist_id = first_playlist.id
+
+    playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
+    if not playlist:
+        raise HTTPException(status_code=404, detail="Playlist not found")
+
+    # Fetch video metadata from YouTube API
+    from app.config import get_settings
+    from googleapiclient.discovery import build
+    settings = get_settings()
+    title = "Unknown Title"
+    published_at = None
+    try:
+        youtube = build("youtube", "v3", developerKey=settings.youtube_api_key)
+        resp = youtube.videos().list(part="snippet", id=youtube_video_id).execute()
+        items = resp.get("items", [])
+        if items:
+            snippet = items[0]["snippet"]
+            title = snippet.get("title", title)
+            pub_str = snippet.get("publishedAt")
+            if pub_str:
+                published_at = datetime.fromisoformat(pub_str.replace("Z", "+00:00"))
+    except Exception as e:
+        # Non-fatal — proceed with unknown title
+        import logging
+        logging.getLogger(__name__).warning(f"Could not fetch YouTube metadata for {youtube_video_id}: {e}")
+
+    video = Video(
+        youtube_video_id=youtube_video_id,
+        playlist_id=playlist_id,
+        title=title,
+        published_at=published_at,
+        processing_status=ProcessingStatus.pending,
+    )
+    db.add(video)
+    db.commit()
+    db.refresh(video)
+
+    background_tasks.add_task(_run_pipeline_bg, only_new=False, video_id=video.id)
+
+    return VideoStatus(
+        id=video.id,
+        youtube_video_id=video.youtube_video_id,
+        title=video.title,
+        published_at=video.published_at,
+        processing_status=video.processing_status.value,
+        processed_at=video.processed_at,
+        error_message=video.error_message,
+        mention_count=0,
+    )
 
 
 @router.post("/videos/{video_id}/reprocess")
