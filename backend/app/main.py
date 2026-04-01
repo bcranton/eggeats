@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -31,6 +32,25 @@ _repo_static = Path(__file__).parent.parent.parent / "frontend"
 STATIC_DIR = _docker_static if _docker_static.exists() else _repo_static
 
 
+PIPELINE_INTERVAL_SECONDS = 3600  # 1 hour
+
+
+async def _pipeline_scheduler():
+    """Runs the pipeline once per hour in the background."""
+    from app.api.admin import _run_pipeline_bg
+    # Wait one full interval before the first run so startup isn't delayed
+    await asyncio.sleep(PIPELINE_INTERVAL_SECONDS)
+    while True:
+        try:
+            logger.info("Scheduled pipeline run starting")
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, _run_pipeline_bg)
+            logger.info("Scheduled pipeline run complete")
+        except Exception:
+            logger.exception("Scheduled pipeline run failed")
+        await asyncio.sleep(PIPELINE_INTERVAL_SECONDS)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.config import get_settings
@@ -42,7 +62,9 @@ async def lifespan(app: FastAPI):
                 f"Missing required environment variables for production: {', '.join(missing)}"
             )
     logger.info("Starting Egg Eats API (environment=%s)", settings.environment)
+    scheduler = asyncio.create_task(_pipeline_scheduler())
     yield
+    scheduler.cancel()
     logger.info("Shutting down")
 
 
