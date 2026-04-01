@@ -271,6 +271,7 @@ function renderVideos() {
           : `<button class="btn btn-secondary btn-sm" onclick="reprocessVideo(${v.id}, this)">↻ Reprocess</button>
              <button class="btn btn-secondary btn-sm" onclick="ignoreVideo(${v.id}, this)" title="Prevent pipeline from ever processing this video">⊘ Ignore</button>`
         }
+        ${v.mention_count > 0 ? `<button class="btn btn-secondary btn-sm" onclick="viewVideoMentions(${v.id}, ${JSON.stringify(v.title)})">📋 Mentions</button>` : ""}
         ${v.mention_count > 0 ? `<button class="btn btn-danger btn-sm" onclick="clearExtractions(${v.id}, this)">✕ Clear</button>` : ""}
       </td>
     `;
@@ -1145,6 +1146,88 @@ function activateBizTab(bizId) {
 }
 
 document.getElementById("btn-refresh-activity").addEventListener("click", loadActivity);
+
+// ──────────────────────────────────────────────────────────
+// Video Mentions modal
+// ──────────────────────────────────────────────────────────
+
+const SENTIMENT_EMOJI = { positive: "👍", negative: "👎", neutral: "😐", mixed: "🤔" };
+const STATUS_LABEL = { approved: "✓ Approved", pending_review: "⚠ Review", rejected: "✗ Rejected" };
+const STATUS_COLOR = { approved: "var(--color-positive)", pending_review: "var(--color-accent)", rejected: "var(--color-negative)" };
+
+async function viewVideoMentions(videoId, videoTitle) {
+  const modal = document.getElementById("video-mentions-modal");
+  const body = document.getElementById("video-mentions-body");
+  document.getElementById("video-mentions-title").textContent = videoTitle.length > 60 ? videoTitle.slice(0, 60) + "…" : videoTitle;
+  document.getElementById("video-mentions-subtitle").textContent = "";
+  body.innerHTML = `<span class="spinner"></span> Loading…`;
+  modal.style.display = "flex";
+
+  try {
+    const mentions = await apiFetch(`/api/admin/videos/${videoId}/mentions`);
+    document.getElementById("video-mentions-subtitle").textContent = `${mentions.length} mention${mentions.length !== 1 ? "s" : ""}`;
+
+    if (!mentions.length) {
+      body.innerHTML = `<div class="empty-state">No mentions found for this video.</div>`;
+      return;
+    }
+
+    const rows = mentions.map(m => {
+      const sentiment = m.sentiment ? `${SENTIMENT_EMOJI[m.sentiment] || ""} ${m.sentiment}` : "–";
+      const status = STATUS_LABEL[m.review_status] || m.review_status;
+      const statusColor = STATUS_COLOR[m.review_status] || "var(--color-text-muted)";
+      const category = m.category ? `<span style="color:var(--color-text-muted);font-size:11px;"> · ${m.category}</span>` : "";
+      const city = m.city_name ? `<span style="color:var(--color-text-muted);font-size:11px;"> · ${esc(m.city_name)}</span>` : "";
+      const quotes = m.quotes.length
+        ? `<div style="margin-top:4px;font-size:12px;color:var(--color-text-muted);">${m.quotes.map(q => `"${esc(q)}"`).join(" · ")}</div>`
+        : "";
+      const ts = m.timestamp_seconds != null ? formatTimestamp(m.timestamp_seconds) : null;
+      const ytLink = `<a href="${esc(m.youtube_url)}" target="_blank" style="font-size:11px;color:var(--color-accent);text-decoration:none;">${ts ? `▶ ${ts}` : "▶ Watch"}</a>`;
+
+      return `
+        <tr>
+          <td style="font-weight:500;">${esc(m.business_name)}${category}${city}</td>
+          <td style="white-space:nowrap;color:${statusColor};font-size:12px;">${status}</td>
+          <td style="font-size:12px;white-space:nowrap;">${sentiment}</td>
+          <td>${quotes}${ytLink ? `<div style="margin-top:2px;">${ytLink}</div>` : ""}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-secondary btn-sm" onclick="closeVideoMentionsModal(); openEditModal(${m.business_id})">Edit</button>
+          </td>
+        </tr>`;
+    }).join("");
+
+    body.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Business</th>
+            <th>Status</th>
+            <th>Sentiment</th>
+            <th>Quotes / Link</th>
+            <th>Actions</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  } catch (e) {
+    body.innerHTML = `<div class="empty-state" style="color:var(--color-negative);">Failed to load mentions.</div>`;
+    console.error(e);
+  }
+}
+
+function closeVideoMentionsModal() {
+  document.getElementById("video-mentions-modal").style.display = "none";
+}
+
+function formatTimestamp(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+document.getElementById("video-mentions-modal").addEventListener("click", e => {
+  if (e.target === document.getElementById("video-mentions-modal")) closeVideoMentionsModal();
+});
 
 // ── Start ──────────────────────────────────────────────────
 checkAuth();

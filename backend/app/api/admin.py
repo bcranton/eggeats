@@ -118,6 +118,22 @@ class MentionDetail(BaseModel):
         from_attributes = True
 
 
+class VideoMentionItem(BaseModel):
+    mention_id: int
+    business_id: int
+    business_name: str
+    city_name: Optional[str]
+    category: Optional[str]
+    review_status: str
+    sentiment: Optional[str]
+    quotes: list[str]
+    timestamp_seconds: Optional[int]
+    youtube_url: str
+
+    class Config:
+        from_attributes = True
+
+
 class MentionUpdateRequest(BaseModel):
     sentiment: Optional[str] = None
     quotes: Optional[list[str]] = None
@@ -925,6 +941,51 @@ def get_business_mentions(
             quotes=quotes,
         ))
 
+    return result
+
+
+@router.get("/videos/{video_id}/mentions", response_model=list[VideoMentionItem])
+def get_video_mentions(
+    video_id: int,
+    db: Session = Depends(get_db),
+    _: AdminSession = Depends(get_admin_session),
+):
+    """Returns all mentions extracted from a specific video, with business details."""
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    mentions = (
+        db.query(Mention)
+        .filter(Mention.video_id == video_id)
+        .options(joinedload(Mention.business).joinedload(Business.city))
+        .order_by(Mention.id)
+        .all()
+    )
+
+    youtube_base = f"https://www.youtube.com/watch?v={video.youtube_video_id}"
+    result = []
+    for m in mentions:
+        biz = m.business
+        url = youtube_base + (f"&t={m.timestamp_seconds}s" if m.timestamp_seconds else "")
+        quotes = []
+        if m.quotes_json:
+            try:
+                quotes = json.loads(m.quotes_json)
+            except json.JSONDecodeError:
+                pass
+        result.append(VideoMentionItem(
+            mention_id=m.id,
+            business_id=biz.id,
+            business_name=biz.name,
+            city_name=biz.city.name if biz.city else None,
+            category=biz.category,
+            review_status=biz.review_status.value,
+            sentiment=m.sentiment.value if m.sentiment else None,
+            quotes=quotes,
+            timestamp_seconds=m.timestamp_seconds,
+            youtube_url=url,
+        ))
     return result
 
 
