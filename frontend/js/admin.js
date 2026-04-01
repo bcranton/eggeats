@@ -271,7 +271,7 @@ function renderVideos() {
           : `<button class="btn btn-secondary btn-sm" onclick="reprocessVideo(${v.id}, this)">↻ Reprocess</button>
              <button class="btn btn-secondary btn-sm" onclick="ignoreVideo(${v.id}, this)" title="Prevent pipeline from ever processing this video">⊘ Ignore</button>`
         }
-        ${v.mention_count > 0 ? `<button class="btn btn-secondary btn-sm" onclick="viewVideoMentions(${v.id}, ${JSON.stringify(v.title)})">📋 Mentions</button>` : ""}
+        ${v.mention_count > 0 ? `<button class="btn btn-secondary btn-sm" onclick="viewVideoMentions(${v.id}, ${esc(JSON.stringify(v.title))})">📋 Mentions</button>` : ""}
         ${v.mention_count > 0 ? `<button class="btn btn-danger btn-sm" onclick="clearExtractions(${v.id}, this)">✕ Clear</button>` : ""}
       </td>
     `;
