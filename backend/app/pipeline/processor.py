@@ -336,6 +336,10 @@ def run_pipeline(
             video_query = video_query.filter(Video.playlist_id == playlist_id)
         videos_to_process = video_query.all()
 
+    # Track which videos were pending (truly new) before processing
+    pending_ids = {v.id for v in videos_to_process if v.processing_status == ProcessingStatus.pending}
+
+    processed_videos = []
     for video in videos_to_process:
         success = process_video(db, video, all_cities)
         if success:
@@ -343,6 +347,13 @@ def run_pipeline(
                 summary["skipped"] += 1
             else:
                 summary["processed"] += 1
+                mention_count = db.query(Mention).filter(Mention.video_id == video.id).count()
+                processed_videos.append({
+                    "title": video.title,
+                    "youtube_video_id": video.youtube_video_id,
+                    "mention_count": mention_count,
+                    "is_new": video.id in pending_ids,
+                })
         else:
             summary["failed"] += 1
 
@@ -351,6 +362,17 @@ def run_pipeline(
         from app.cache import cache_clear
         cache_clear()
         logger.info("Server cache cleared after pipeline run")
+
+    # Discord notification
+    from app.config import get_settings
+    from app.pipeline.discord import notify_pipeline_complete
+    settings = get_settings()
+    if settings.discord_webhook_url:
+        notify_pipeline_complete(
+            webhook_url=settings.discord_webhook_url,
+            processed=processed_videos,
+            failed=summary["failed"],
+        )
 
     logger.info(f"Pipeline complete: {summary}")
     return summary

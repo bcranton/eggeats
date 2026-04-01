@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # Session signing
     secret_key: str = ""
 
+    # Discord webhook for pipeline notifications (optional)
+    discord_webhook_url: str = ""
+
     # App
     environment: str = "development"
     log_level: str = "INFO"
