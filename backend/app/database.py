@@ -12,10 +12,10 @@ def get_engine():
     return create_engine(
         url,
         pool_pre_ping=True,
-        # 5 connections held per worker, 5 overflow burst capacity.
-        # With 2 gunicorn workers: max 10 persistent + 10 burst DB connections.
-        pool_size=5,
-        max_overflow=5,
+        # 2 connections held per worker, 3 overflow burst capacity.
+        # With 2 gunicorn workers: max 4 persistent + 6 burst DB connections.
+        pool_size=2,
+        max_overflow=3,
     )
 
 
