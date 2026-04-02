@@ -288,6 +288,12 @@ body {
   align-items: center;
   gap: 10px;
   margin-bottom: 7px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface);
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 
 .unlocated-item-dot {
@@ -367,6 +373,12 @@ body {
   font-weight: 600;
   color: var(--color-text);
   margin-bottom: 6px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface);
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 
 .list-card-badges {
@@ -969,6 +981,15 @@ select.filter-select:focus {
   100% { transform: translateX(280%); }
 }
 
+@keyframes pin-appear {
+  from { opacity: 0; transform: scale(0.5) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.map-marker {
+  animation: pin-appear 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
 /* ── List/map toggle button ── */
 .list-toggle-btn {
   display: flex;
@@ -1039,6 +1060,19 @@ select.filter-select:focus {
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.15s, border-color 0.15s;
+  position: relative;
+}
+
+.filter-active-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e05252;
+  border: 1.5px solid var(--color-surface-2);
+  pointer-events: none;
 }
 
 .mobile-filter-btn:hover {

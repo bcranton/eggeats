@@ -93,6 +93,13 @@ let activeFilters = {
   dateFrom: "",     // YYYY-MM-DD (custom range)
   dateTo: "",       // YYYY-MM-DD (custom range)
 };
+
+function updateFilterDot() {
+  const active = activeFilters.category || activeFilters.sentiment
+    || !activeFilters.showClosed || activeFilters.search || activeFilters.datePreset;
+  const dot = document.getElementById("filter-active-dot");
+  if (dot) dot.style.display = active ? "block" : "none";
+}
 let listViewData = []; // businesses shown in list mode
 let userListMode = false; // user toggled list view for a regular city
 let visiblePins = []; // currently rendered map pins (filtered)
@@ -838,6 +845,7 @@ document.getElementById("filter-city").addEventListener("change", e => {
 
 document.getElementById("filter-category").addEventListener("change", e => {
   activeFilters.category = e.target.value;
+  updateFilterDot();
   if (isListViewActive()) { renderListView(); } else { loadMapData(); }
   if (window.matchMedia("(max-width: 768px)").matches) closeFilterDrawer();
 });
@@ -853,6 +861,7 @@ document.querySelectorAll(".sentiment-btn").forEach(btn => {
       activeFilters.sentiment = sentiment;
       btn.classList.add("active");
     }
+    updateFilterDot();
     if (isListViewActive()) { renderListView(); } else { loadMapData(); }
     if (window.matchMedia("(max-width: 768px)").matches) closeFilterDrawer();
   });
@@ -860,6 +869,7 @@ document.querySelectorAll(".sentiment-btn").forEach(btn => {
 
 document.getElementById("filter-show-closed").addEventListener("change", e => {
   activeFilters.showClosed = e.target.checked;
+  updateFilterDot();
   if (userListMode) { renderListView(); }
   else if (isListViewActive()) { renderListView(); }
   else { renderMap(allPins); renderUnlocatedStrip(); }
@@ -871,6 +881,7 @@ document.getElementById("filter-search").addEventListener("input", e => {
   clearTimeout(_searchTimer);
   _searchTimer = setTimeout(() => {
     activeFilters.search = e.target.value.trim();
+    updateFilterDot();
     if (userListMode) { renderListView(); }
     else if (isListViewActive()) { renderListView(); }
     else { renderMap(allPins); renderUnlocatedStrip(); }
@@ -899,6 +910,7 @@ document.querySelectorAll(".date-btn").forEach(btn => {
         activeFilters.dateTo = "";
       }
     }
+    updateFilterDot();
     if (preset !== "custom" || activeFilters.datePreset === "") {
       if (isListViewActive()) { loadListView(); } else { loadMapData(); }
     }
@@ -1066,6 +1078,7 @@ document.getElementById("btn-clear-filters").addEventListener("click", () => {
   document.querySelectorAll(".sentiment-btn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".date-btn").forEach(b => b.classList.remove("active"));
   document.getElementById("date-custom-range").style.display = "none";
+  updateFilterDot();
   loadMapData();
 });
 
@@ -1074,7 +1087,10 @@ document.addEventListener("keydown", e => {
   // Don't intercept when typing in an input/textarea
   if (e.target.matches("input, textarea, select")) return;
   const panelOpen = document.getElementById("info-panel").classList.contains("open");
-  if (e.key === "Escape" && panelOpen) {
+  if (e.key === "/") {
+    e.preventDefault();
+    document.getElementById("filter-search").focus();
+  } else if (e.key === "Escape" && panelOpen) {
     closePanel();
   } else if (panelOpen && e.key === "ArrowRight") {
     e.preventDefault();
