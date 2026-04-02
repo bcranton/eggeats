@@ -21,6 +21,9 @@ from app.database import get_db
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Cache for server-side rendered place.html template
+_place_template: str | None = None
+
 # Rate limiter — keyed by client IP
 limiter = Limiter(key_func=get_remote_address)
 
@@ -139,16 +142,13 @@ if STATIC_DIR.exists():
             headers={"Cache-Control": HTML_CACHE},
         )
 
-    # Cache the place.html template bytes once at startup
-    _place_template: str | None = None
-
     @app.get("/place/{business_id}")
     def serve_place(business_id: int, db: Session = Depends(get_db)):
         import html as _html
         from app.models import Business, ReviewStatus
         from sqlalchemy.orm import joinedload
 
-        nonlocal _place_template
+        global _place_template
         if _place_template is None:
             _place_template = (STATIC_DIR / "place.html").read_text(encoding="utf-8")
 
