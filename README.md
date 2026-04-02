@@ -4,7 +4,7 @@ An interactive map at [eggeats.com](https://eggeats.com) that tracks every resta
 
 ## Features
 
-- **Interactive map** (OpenFreeMap, dark theme) with sentiment-coloured pins (green=positive, red=negative)
+- **Interactive map** (OpenFreeMap Fiord style) with sentiment-coloured pins (green=positive, red=negative)
 - **Filter** by city, category, date range, and NL's vibe
 - **List view** with full business details, quotes, and YouTube timestamp links
 - **Business detail panel** with address, street view, direct quotes, and links back to the exact video moment
