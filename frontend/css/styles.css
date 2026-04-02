@@ -277,7 +277,7 @@ body {
 }
 
 .unlocated-item {
-  padding: 14px 16px;
+  padding: 0 16px 14px;
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -287,13 +287,11 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 7px;
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--color-surface);
-  padding-top: 2px;
-  padding-bottom: 2px;
+  background: var(--color-surface-2);
+  padding: 14px 0 7px;
 }
 
 .unlocated-item-dot {
@@ -346,11 +344,16 @@ body {
 
 .list-card {
   display: flex;
-  gap: 14px;
+  flex-direction: column;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  padding: 14px 16px;
+  padding: 0 16px 14px;
+}
+
+.list-card-row {
+  display: flex;
+  gap: 14px;
 }
 
 .list-card-dot {
@@ -372,13 +375,11 @@ body {
   font-size: 15px;
   font-weight: 600;
   color: var(--color-text);
-  margin-bottom: 6px;
   position: sticky;
   top: 0;
   z-index: 1;
   background: var(--color-surface);
-  padding-top: 2px;
-  padding-bottom: 2px;
+  padding: 14px 0 8px;
 }
 
 .list-card-badges {
@@ -982,12 +983,12 @@ select.filter-select:focus {
 }
 
 @keyframes pin-appear {
-  from { opacity: 0; transform: scale(0.5) translateY(8px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .map-marker {
-  animation: pin-appear 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: pin-appear 0.2s ease both;
 }
 
 /* ── List/map toggle button ── */

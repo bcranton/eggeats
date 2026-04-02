@@ -431,13 +431,15 @@ function renderListView() {
       : "";
 
     card.innerHTML = `
-      <div class="list-card-dot" style="background:${sentimentColor};"></div>
-      <div class="list-card-content">
-        <div class="list-card-name">${escapeHtml(biz.name)}</div>
-        <div class="list-card-badges">${badgesHtml}</div>
-        ${addressHtml}${websiteHtml}
-        ${mentionsHtml}
-        ${pinHintHtml}
+      <div class="list-card-name">${escapeHtml(biz.name)}</div>
+      <div class="list-card-row">
+        <div class="list-card-dot" style="background:${sentimentColor};"></div>
+        <div class="list-card-content">
+          <div class="list-card-badges">${badgesHtml}</div>
+          ${addressHtml}${websiteHtml}
+          ${mentionsHtml}
+          ${pinHintHtml}
+        </div>
       </div>
     `;
 
