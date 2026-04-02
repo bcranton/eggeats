@@ -323,12 +323,16 @@ function showListView() {
   document.getElementById("map").style.display = "none";
   document.getElementById("list-view").style.display = "flex";
   document.getElementById("unlocated-drawer").style.display = "none";
+  document.getElementById("btn-recenter").style.display = "none";
 }
 
 function showMapView() {
   document.getElementById("map").style.display = "";
   document.getElementById("list-view").style.display = "none";
   if (map) map.resize();
+  const city = citiesById[activeFilters.city];
+  document.getElementById("btn-recenter").style.display =
+    (map && city && !city.is_virtual) ? "" : "none";
 }
 
 async function loadListModeData() {
@@ -936,6 +940,12 @@ document.getElementById("btn-list-toggle").addEventListener("click", async () =>
     renderMap(allPins);
     renderUnlocatedStrip();
   }
+});
+
+document.getElementById("btn-recenter").addEventListener("click", () => {
+  const city = citiesById[activeFilters.city];
+  if (!map || !city) return;
+  map.flyTo({ center: [city.center_lng, city.center_lat], zoom: city.default_zoom, duration: 600 });
 });
 
 document.getElementById("panel-close").addEventListener("click", closePanel);

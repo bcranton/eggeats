@@ -59,6 +59,7 @@
 <div id="loading">
   <div class="spinner"></div>
   <p style="font-size:14px; color: var(--color-text-muted);">Loading… Northernlion is reviewing the menu.</p>
+  <div class="loading-bar-track"><div class="loading-bar"></div></div>
 </div>
 
 <!-- Site header: centered title + subtitle -->
@@ -74,6 +75,7 @@
 <div class="city-bar">
   <select class="city-select" id="filter-city"></select>
   <button class="list-toggle-btn" id="btn-list-toggle" title="Switch to list view">☰ List</button>
+  <button class="recenter-btn" id="btn-recenter" title="Re-centre map on city" style="display:none;">⌖</button>
   <button class="mobile-filter-btn" id="mobile-filter-btn" aria-label="Open filters">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -199,6 +201,6 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.js"></script>
-<script src="/js/map.js?v=9"></script>
+<script src="/js/map.js?v=10"></script>
 </body>
 </html>
