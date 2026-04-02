@@ -139,12 +139,53 @@ if STATIC_DIR.exists():
             headers={"Cache-Control": HTML_CACHE},
         )
 
+    # Cache the place.html template bytes once at startup
+    _place_template: str | None = None
+
     @app.get("/place/{business_id}")
-    def serve_place(business_id: int):
-        return FileResponse(
-            STATIC_DIR / "place.html",
-            headers={"Cache-Control": HTML_CACHE},
+    def serve_place(business_id: int, db: Session = Depends(get_db)):
+        import html as _html
+        from app.models import Business, ReviewStatus
+        from sqlalchemy.orm import joinedload
+
+        nonlocal _place_template
+        if _place_template is None:
+            _place_template = (STATIC_DIR / "place.html").read_text(encoding="utf-8")
+
+        biz = (
+            db.query(Business)
+            .options(joinedload(Business.city), joinedload(Business.mentions))
+            .filter(Business.id == business_id, Business.review_status == ReviewStatus.approved)
+            .first()
         )
+
+        if biz:
+            # Dominant sentiment across all mentions
+            counts: dict[str, int] = {}
+            for m in biz.mentions:
+                if m.sentiment:
+                    counts[m.sentiment.value] = counts.get(m.sentiment.value, 0) + 1
+            sentiment = max(counts, key=counts.get) if counts else None
+            sentiment_text = f" NL rates it {sentiment}." if sentiment else ""
+
+            title = f"{biz.name} — Northernlion's {biz.city.name} Guide | Egg Eats"
+            desc = (
+                f"{biz.name} in {biz.city.name}. Visited by Northernlion.{sentiment_text} Mapped on Egg Eats."
+                if biz.address else
+                f"{biz.name} — visited by Northernlion in {biz.city.name}.{sentiment_text} Mapped on Egg Eats."
+            )
+        else:
+            title = "Place Not Found | Egg Eats"
+            desc = "This place could not be found on Egg Eats."
+
+        canonical = f"https://eggeats.com/place/{business_id}"
+        page_html = (
+            _place_template
+            .replace("EE_PAGE_TITLE", _html.escape(title))
+            .replace("EE_PAGE_DESC", _html.escape(desc))
+            .replace("EE_CANONICAL_URL", canonical)
+        )
+        return Response(content=page_html, media_type="text/html", headers={"Cache-Control": HTML_CACHE})
 
     @app.get("/sitemap.xml", response_class=Response)
     def serve_sitemap(db: Session = Depends(get_db)):
