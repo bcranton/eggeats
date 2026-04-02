@@ -249,6 +249,33 @@
     return `${m}:${String(s).padStart(2, "0")}`;
   }
 
+  function ytEmbedUrl(watchUrl) {
+    try {
+      const u = new URL(watchUrl);
+      const videoId = u.searchParams.get("v");
+      if (!videoId) return null;
+      const start = parseInt(u.searchParams.get("t") || "0", 10);
+      return `https://www.youtube.com/embed/${videoId}?start=${start}&autoplay=1`;
+    } catch { return null; }
+  }
+
+  function toggleYtEmbed(btn) {
+    const existing = btn.nextElementSibling;
+    if (existing && existing.classList.contains("yt-embed-wrap")) {
+      existing.remove();
+      btn.classList.remove("active");
+      return;
+    }
+    const embedUrl = ytEmbedUrl(btn.dataset.ytUrl);
+    if (!embedUrl) return;
+    const wrap = document.createElement("div");
+    wrap.className = "yt-embed-wrap";
+    wrap.innerHTML = `<iframe src="${embedUrl}" frameborder="0" allowfullscreen
+      allow="autoplay; encrypted-media" loading="lazy"></iframe>`;
+    btn.after(wrap);
+    btn.classList.add("active");
+  }
+
   // Extract [MM/DD/YYYY] from video title → comparable number
   function titleDate(title) {
     const m = (title || "").match(/\[(\d{2})\/(\d{2})\/(\d{4})\]/);
@@ -410,25 +437,13 @@
         : "";
 
       // Build YouTube embed
-      const ytMatch = m.youtube_url.match(/[?&]v=([A-Za-z0-9_-]{11})/);
-      const videoId = ytMatch ? ytMatch[1] : null;
-      const start = m.timestamp_seconds || 0;
-      const embedHtml = videoId
-        ? `<div class="yt-embed-wrap">
-             <iframe src="https://www.youtube.com/embed/${videoId}?start=${start}&rel=0"
-               title="${escapeHtml(m.video_title)}"
-               frameborder="0"
-               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-               allowfullscreen loading="lazy"></iframe>
-           </div>`
-        : `<a class="watch-link" href="${escapeHtml(m.youtube_url)}" target="_blank" rel="noopener">▶ Watch on YouTube</a>`;
-
+      const timeLabel = m.timestamp_seconds ? ` (${formatTime(m.timestamp_seconds)})` : "";
       return `
         <div class="mention-card">
           ${sentimentBadge}
           <div class="video-title">${escapeHtml(m.video_title)}</div>
           ${quotesHtml || `<div class="quote" style="opacity:0.5">No quotes extracted.</div>`}
-          ${embedHtml}
+          <button class="watch-link" data-yt-url="${escapeHtml(m.youtube_url)}" onclick="toggleYtEmbed(this)">▶ Watch on YouTube${timeLabel}</button>
         </div>`;
     }).join("");
 
