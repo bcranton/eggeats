@@ -127,7 +127,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: visible;  /* allow drawer body to extend into map area without being clipped */
-  padding: 0 200px 0 0;
+  padding: 0 5%;
   background: var(--color-surface);
   position: relative;
 }
