@@ -79,6 +79,7 @@ class BusinessAdmin(BaseModel):
     extra_addresses: list[str]
     website: Optional[str]
     is_closed: bool
+    sentiment_override: Optional[str]
     review_status: str
     admin_notes: Optional[str]
     city_id: int
@@ -100,6 +101,7 @@ class BusinessUpdateRequest(BaseModel):
     extra_addresses: Optional[list[str]] = None
     website: Optional[str] = None
     is_closed: Optional[bool] = None
+    sentiment_override: Optional[str] = None
     review_status: Optional[str] = None
     admin_notes: Optional[str] = None
 
@@ -752,6 +754,7 @@ def get_businesses(
             extra_addresses=extra_addresses,
             website=b.website,
             is_closed=b.is_closed,
+            sentiment_override=b.sentiment_override,
             review_status=b.review_status.value,
             admin_notes=b.admin_notes,
             city_id=b.city_id,
@@ -986,6 +989,11 @@ def update_business(
         business.website = request.website
     if request.is_closed is not None:
         business.is_closed = request.is_closed
+    if "sentiment_override" in request.model_fields_set:
+        valid = {None, "positive", "negative", "neutral", "mixed"}
+        if request.sentiment_override not in valid:
+            raise HTTPException(status_code=400, detail="Invalid sentiment_override value")
+        business.sentiment_override = request.sentiment_override
     if request.review_status is not None:
         try:
             business.review_status = ReviewStatus(request.review_status)

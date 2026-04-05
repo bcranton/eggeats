@@ -677,6 +677,7 @@ async function openEditModal(id) {
   (allAddresses.length ? allAddresses : [""]).forEach(a => addAddressRow(a));
   document.getElementById("edit-biz-notes").value = editBizData.admin_notes || "";
   document.getElementById("edit-biz-closed").checked = !!editBizData.is_closed;
+  document.getElementById("edit-biz-sentiment-override").value = editBizData.sentiment_override || "";
   document.getElementById("edit-modal").style.display = "flex";
 
   // Load mentions for vibe editing
@@ -844,6 +845,7 @@ document.getElementById("edit-save").addEventListener("click", async () => {
     extra_addresses: allAddrs.slice(1),
     admin_notes: document.getElementById("edit-biz-notes").value.trim() || null,
     is_closed: document.getElementById("edit-biz-closed").checked,
+    sentiment_override: document.getElementById("edit-biz-sentiment-override").value || null,
   };
 
   try {

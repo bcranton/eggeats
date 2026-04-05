@@ -120,6 +120,7 @@ class Business(Base):
     extra_addresses_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     website: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_closed: Mapped[bool] = mapped_column(Boolean, default=False)
+    sentiment_override: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     review_status: Mapped[ReviewStatus] = mapped_column(
         Enum(ReviewStatus), default=ReviewStatus.pending_review
     )

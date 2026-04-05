@@ -120,6 +120,13 @@ def _dominant_sentiment(mentions: list[Mention]) -> Optional[str]:
     return max(counts, key=lambda k: counts[k])
 
 
+def _effective_sentiment(business) -> Optional[str]:
+    """Returns the admin override if set, otherwise the computed dominant sentiment."""
+    if business.sentiment_override:
+        return business.sentiment_override
+    return _dominant_sentiment(business.mentions)
+
+
 def _mention_to_summary(mention: Mention) -> MentionSummary:
     quotes = []
     if mention.quotes_json:
@@ -254,12 +261,12 @@ def get_map_data(
     if sentiment:
         businesses = [
             b for b in businesses
-            if _dominant_sentiment(b.mentions) == sentiment
+            if _effective_sentiment(b) == sentiment
         ]
 
     pins = []
     for b in businesses:
-        sentiment = _dominant_sentiment(b.mentions)
+        sentiment = _effective_sentiment(b)
         mention_count = len(b.mentions)
         base = dict(
             id=b.id,
@@ -405,7 +412,7 @@ def get_no_location_businesses(
             name=b.name,
             category=b.category,
             is_closed=b.is_closed,
-            sentiment_summary=_dominant_sentiment(b.mentions),
+            sentiment_summary=_effective_sentiment(b),
             city_name=b.city.name,
             mentions=[_mention_to_summary(m) for m in b.mentions],
         )
@@ -472,7 +479,7 @@ def get_list_data(
             name=b.name,
             category=b.category,
             is_closed=b.is_closed,
-            sentiment_summary=_dominant_sentiment(b.mentions),
+            sentiment_summary=_effective_sentiment(b),
             lat=b.lat,
             lng=b.lng,
             address=b.address,
